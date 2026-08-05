@@ -141,16 +141,14 @@
     padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:.3s;z-index:60}
   .aviso.mostra{opacity:1;bottom:34px}
   .carregando{text-align:center;padding:60px 20px;color:var(--cinza)}
-  @media (prefers-color-scheme: dark){
-    :root{
+  :root[data-tema="escuro"]{
       --porcelana:#0E1621; --superficie:#182432; --azulejo:#28394E;
       --tinta:#E9EFF6; --cinza:#94A6B9; --apagar:#4E6883;
       --cobalto:#2E62AC; --cobalto-escuro:#1E4E8C;
       --sombra:0 2px 12px rgba(0,0,0,.4);
-    }
-    .valor-input input::placeholder{color:#3E5570}
-    header{background:#16355F}
   }
+  :root[data-tema="escuro"] .valor-input input::placeholder{color:#3E5570}
+  :root[data-tema="escuro"] header{background:#16355F}
   @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -213,6 +211,8 @@
     <input id="mOrc" type="number" inputmode="decimal" step="0.01" min="0" placeholder="3750">
     <label for="mCambio">Câmbio para R$ (1 unidade = ? reais)</label>
     <input id="mCambio" type="number" inputmode="decimal" step="0.01" min="0" placeholder="6.30">
+    <label>Tema do aplicativo</label>
+    <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
@@ -279,6 +279,25 @@ const PGTOS = [
   {id:'outra',   nome:'Outra',   ico:'🔁'},
 ];
 const CHAVE = 'despesas-viagem:dados';
+const CHAVE_TEMA = 'despesas-viagem:tema';
+const TEMAS = [['claro','☀️ Claro'],['escuro','🌙 Escuro'],['auto','🌓 Automático']];
+function aplicarTema(){
+  const t = localStorage.getItem(CHAVE_TEMA) || 'claro';
+  const escuro = t === 'escuro' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.tema = escuro ? 'escuro' : 'claro';
+  document.documentElement.style.colorScheme = escuro ? 'dark' : 'light';
+}
+aplicarTema();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', aplicarTema);
+function renderTemaChips(){
+  const atual = localStorage.getItem(CHAVE_TEMA) || 'claro';
+  $('temaChips').innerHTML = TEMAS.map(([id, rot]) =>
+    `<button type="button" class="chip ${id===atual?'ativo':''}" data-tema-op="${id}"><span>${rot}</span></button>`).join('');
+  document.querySelectorAll('[data-tema-op]').forEach(b => b.onclick = () => {
+    localStorage.setItem(CHAVE_TEMA, b.dataset.temaOp);
+    aplicarTema(); renderTemaChips();
+  });
+}
 const tinte = (hex, a) => { const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; };
 
@@ -437,6 +456,7 @@ function abrirModal(editar){
   $('mOrc').value    = editar ? (v.orcamento||'') : '';
   $('mCambio').value = editar ? v.cambio : '';
   $('zonaPerigo').style.display = (editar && dados.viagens.length > 1) ? 'block' : 'none';
+  renderTemaChips();
   $('veu').classList.add('aberto');
 }
 $('btnNova').onclick   = () => abrirModal(false);
