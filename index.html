@@ -108,6 +108,18 @@
   .modal .zona-perigo button{width:100%;background:none;border:1.5px solid #F1D3CE;color:var(--alerta);
     border-radius:10px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer}
 
+  .doc-linha{display:flex;align-items:center;gap:11px;padding:12px 4px;border-bottom:1px solid var(--azulejo);cursor:pointer}
+  .doc-fixo{background:var(--azulejo);border-radius:12px;padding:12px;border-bottom:none;margin-bottom:6px}
+  .doc-ico{width:38px;height:38px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+  .doc-linha:not(.doc-fixo) .doc-ico{background:var(--azulejo)}
+  .doc-info{flex:1;min-width:0}
+  .doc-nome{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .doc-sub{font-size:12px;color:var(--cinza);margin-top:2px}
+  .doc-abrir{font-size:12.5px;font-weight:700;color:var(--cobalto);flex:none}
+  .doc-apagar{border:none;background:none;color:#C6D2E0;font-size:16px;padding:4px;cursor:pointer;flex:none}
+  .btn-anexar{display:block;text-align:center;margin-top:14px;border:1.5px dashed var(--cobalto);
+    color:var(--cobalto);border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
+  .doc-aviso{font-size:11.5px;color:var(--cinza);text-align:center;margin-top:8px}
   .cat-cartao{cursor:pointer}
   .cat-cartao:active{transform:scale(.98)}
   .ver-detalhe{font-size:11px;color:var(--cobalto);font-weight:700;margin-top:8px}
@@ -131,6 +143,7 @@
 <header>
   <div class="topo">
     <select id="selViagem" aria-label="Escolher viagem"></select>
+    <button class="btn-icone" id="btnDocs" title="Documentos da viagem">📄</button>
     <button class="btn-icone" id="btnConfig" title="Ajustes da viagem">⚙</button>
     <button class="btn-icone" id="btnNova" title="Nova viagem">＋</button>
   </div>
@@ -189,6 +202,36 @@
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal: documentos da viagem -->
+<div class="veu" id="veuDocs">
+  <div class="modal">
+    <h3>📄 Documentos da viagem</h3>
+    <div class="doc-linha doc-fixo" id="abrirRoteiro" role="button" tabindex="0">
+      <div class="doc-ico">🗺️</div>
+      <div class="doc-info">
+        <div class="doc-nome">Planejamento completo da viagem</div>
+        <div class="doc-sub">Roteiro, hotéis, restaurantes e checklist — disponível offline</div>
+      </div>
+      <div class="doc-abrir">Abrir ›</div>
+    </div>
+    <div id="docsTrava" style="display:none">
+      <div class="doc-aviso" style="margin:14px 0 8px">🔒 Anexos protegidos por PIN</div>
+      <input id="inpPin" type="password" inputmode="numeric" maxlength="8" placeholder="Digite o PIN"
+             style="width:100%;border:1.5px solid var(--azulejo);border-radius:10px;padding:12px;font-size:16px;text-align:center;outline:none">
+      <button class="btn-principal" id="btnDestravar" style="margin-top:10px">Destravar</button>
+      <button class="fechar" id="btnEsqueciPin">Esqueci o PIN (apaga os anexos protegidos)</button>
+    </div>
+    <div id="docsConteudo">
+      <div id="listaDocs"></div>
+      <label class="btn-anexar" for="inpAnexo">＋ Anexar documento (voucher, passaporte, CNH...)</label>
+      <input id="inpAnexo" type="file" accept="application/pdf,image/*" style="display:none">
+      <button class="fechar" id="btnPin" style="color:var(--cobalto);font-weight:700">🔒 Proteger anexos com PIN (recomendado)</button>
+      <div class="doc-aviso">Anexos ficam só neste celular — nada é enviado à internet. Limite: 1,5 MB por arquivo.</div>
+    </div>
+    <button class="fechar" id="docsFechar">Fechar</button>
   </div>
 </div>
 
@@ -472,6 +515,157 @@ function abrirCategoria(catId){
   $('veuCat').classList.add('aberto');
 }
 $('catFechar').onclick = () => $('veuCat').classList.remove('aberto');
+
+// ---------- Documentos da viagem (com proteção opcional por PIN / AES-256) ----------
+const CHAVE_DOCS = 'despesas-viagem:docs';
+const CHAVE_SALT = 'despesas-viagem:docs-salt';
+const CHAVE_VERIF = 'despesas-viagem:docs-verif';
+let chaveSessao = null; // chave AES fica só na memória, some ao fechar o app
+
+const lerDocs = () => { try { return JSON.parse(localStorage.getItem(CHAVE_DOCS)) || []; } catch(e){ return []; } };
+const salvarDocs = docs => { localStorage.setItem(CHAVE_DOCS, JSON.stringify(docs)); };
+const pinAtivo = () => !!localStorage.getItem(CHAVE_SALT);
+
+// base64 em blocos (arquivos grandes estouram a pilha com spread)
+const b64 = a => { const u = new Uint8Array(a); let s = '';
+  for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s); };
+const deB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function derivarChave(pin, salt){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:150000, hash:'SHA-256'},
+                                 base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function cifrar(texto, chave){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const buf = await crypto.subtle.encrypt({name:'AES-GCM', iv}, chave, new TextEncoder().encode(texto));
+  return {iv: b64(iv), cif: b64(buf)};
+}
+async function decifrar(obj, chave){
+  const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv: deB64(obj.iv)}, chave, deB64(obj.cif));
+  return new TextDecoder().decode(buf);
+}
+
+function mostrarTrava(travado){
+  $('docsTrava').style.display = travado ? 'block' : 'none';
+  $('docsConteudo').style.display = travado ? 'none' : 'block';
+  if(travado) $('inpPin').value = '';
+}
+
+$('btnDocs').onclick = () => {
+  if(pinAtivo() && !chaveSessao){ mostrarTrava(true); }
+  else { mostrarTrava(false); renderDocs(); }
+  $('veuDocs').classList.add('aberto');
+};
+$('docsFechar').onclick = () => $('veuDocs').classList.remove('aberto');
+$('abrirRoteiro').onclick = () => window.open('planejamento.pdf', '_blank');
+$('abrirRoteiro').onkeydown = e => { if(e.key==='Enter') window.open('planejamento.pdf', '_blank'); };
+
+$('btnDestravar').onclick = async () => {
+  const pin = $('inpPin').value;
+  if(pin.length < 4){ avisar('PIN de 4 a 8 dígitos'); return; }
+  try{
+    const chave = await derivarChave(pin, deB64(localStorage.getItem(CHAVE_SALT)));
+    const ok = await decifrar(JSON.parse(localStorage.getItem(CHAVE_VERIF)), chave);
+    if(ok !== 'ok') throw 0;
+    chaveSessao = chave;
+    mostrarTrava(false); renderDocs(); avisar('Destravado ✓');
+  }catch(e){ avisar('PIN incorreto'); }
+};
+
+$('btnEsqueciPin').onclick = () => {
+  if(!confirm('Sem o PIN não há como recuperar os anexos protegidos.\nApagar TODOS os anexos e remover o PIN?')) return;
+  localStorage.removeItem(CHAVE_DOCS); localStorage.removeItem(CHAVE_SALT); localStorage.removeItem(CHAVE_VERIF);
+  chaveSessao = null; mostrarTrava(false); renderDocs(); avisar('Anexos e PIN removidos');
+};
+
+$('btnPin').onclick = async () => {
+  if(pinAtivo()) return;
+  const pin = prompt('Crie um PIN de 4 a 8 dígitos para proteger os anexos:');
+  if(pin === null) return;
+  if(!/^\d{4,8}$/.test(pin)){ avisar('Use somente 4 a 8 dígitos'); return; }
+  const pin2 = prompt('Repita o PIN:');
+  if(pin2 !== pin){ avisar('Os PINs não conferem'); return; }
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const chave = await derivarChave(pin, salt);
+  localStorage.setItem(CHAVE_SALT, b64(salt));
+  localStorage.setItem(CHAVE_VERIF, JSON.stringify(await cifrar('ok', chave)));
+  // criptografa anexos que já existiam
+  const docs = lerDocs();
+  for(const d of docs){
+    if(d.dados){ const c = await cifrar(d.dados, chave); d.iv = c.iv; d.cif = c.cif; delete d.dados; }
+  }
+  salvarDocs(docs);
+  chaveSessao = chave;
+  renderDocs(); avisar('PIN ativado — anexos criptografados ✓');
+};
+
+function renderDocs(){
+  $('btnPin').style.display = pinAtivo() ? 'none' : 'block';
+  const docs = lerDocs();
+  $('listaDocs').innerHTML = docs.map(d => `
+    <div class="doc-linha" data-id="${d.id}">
+      <div class="doc-ico">${d.tipo.includes('pdf') ? '📕' : '🖼️'}</div>
+      <div class="doc-info">
+        <div class="doc-nome">${d.cif ? '🔒 ' : ''}${d.nome}</div>
+        <div class="doc-sub">${d.tam}</div>
+      </div>
+      <div class="doc-abrir">Abrir ›</div>
+      <button class="doc-apagar" data-del="${d.id}" title="Apagar anexo">✕</button>
+    </div>`).join('');
+  document.querySelectorAll('#listaDocs .doc-linha').forEach(el => {
+    el.onclick = async ev => {
+      if(ev.target.dataset.del) return;
+      const doc = lerDocs().find(x => x.id == el.dataset.id);
+      if(!doc) return;
+      let dataURL = doc.dados;
+      if(doc.cif){
+        if(!chaveSessao){ avisar('Destrave com o PIN primeiro'); return; }
+        try{ dataURL = await decifrar(doc, chaveSessao); }
+        catch(e){ avisar('Falha ao decifrar o documento'); return; }
+      }
+      const partes = dataURL.split(',');
+      const bin = atob(partes[1]);
+      const arr = new Uint8Array(bin.length);
+      for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      window.open(URL.createObjectURL(new Blob([arr], {type: doc.tipo})), '_blank');
+    };
+  });
+  document.querySelectorAll('[data-del]').forEach(btn => {
+    btn.onclick = () => {
+      if(!confirm('Apagar este anexo?')) return;
+      salvarDocs(lerDocs().filter(d => d.id != btn.dataset.del));
+      renderDocs(); avisar('Anexo apagado');
+    };
+  });
+}
+
+$('inpAnexo').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  if(f.size > 1.5 * 1024 * 1024){ avisar('Arquivo grande demais (máx. 1,5 MB)'); e.target.value=''; return; }
+  const leitor = new FileReader();
+  leitor.onload = async () => {
+    try{
+      const docs = lerDocs();
+      const novo = { id: Date.now(), nome: f.name, tipo: f.type || 'application/octet-stream',
+                     tam: (f.size/1024).toFixed(0) + ' KB' };
+      if(pinAtivo()){
+        if(!chaveSessao){ avisar('Destrave com o PIN antes de anexar'); e.target.value=''; return; }
+        const c = await cifrar(leitor.result, chaveSessao);
+        novo.iv = c.iv; novo.cif = c.cif;
+      } else {
+        novo.dados = leitor.result;
+      }
+      docs.push(novo);
+      salvarDocs(docs);
+      renderDocs(); avisar('Documento anexado ✓');
+    }catch(err){ avisar('Sem espaço — apague anexos antigos'); }
+    e.target.value = '';
+  };
+  leitor.readAsDataURL(f);
+});
 
 let avisoTimer;
 function avisar(msg){
