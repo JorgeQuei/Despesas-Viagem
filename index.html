@@ -11,14 +11,15 @@
 <link rel="apple-touch-icon" href="icone-192.png">
 <style>
   :root{
-    --cobalto:#1E4E8C; --cobalto-escuro:#16355F; --azulejo:#E9F0F8;
-    --porcelana:#FAFBFD; --tinta:#182A40; --cinza:#6B7A8C;
+    --cobalto:#1E4E8C; --cobalto-escuro:#16355F; --azulejo:#DCE6F2;
+    --porcelana:#E8EEF6; --tinta:#182A40; --cinza:#6B7A8C;
     --dourado:#B8860B; --alerta:#B03A2E; --ok:#2E7D52;
     --superficie:#FFFFFF; --apagar:#C6D2E0; color-scheme:light dark;
-    --raio:14px; --sombra:0 2px 10px rgba(22,53,95,.10);
+    --raio:14px; --sombra:0 1px 6px rgba(22,53,95,.13);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--porcelana);color:var(--tinta);min-height:100vh}
+  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--porcelana);color:var(--tinta);min-height:100vh;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%231E4E8C' stroke-opacity='.055' stroke-width='1.2'%3E%3Cpath d='M28 4 L52 28 L28 52 L4 28 Z'/%3E%3Ccircle cx='28' cy='28' r='9'/%3E%3C/g%3E%3C/svg%3E")}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 
   /* ---------- Cabeçalho azulejo ---------- */
@@ -54,7 +55,7 @@
   .valor-input input::placeholder{color:#C6D2E0}
   .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 4px}
   .chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-    border:1.5px solid var(--azulejo);background:var(--porcelana);border-radius:14px;
+    border:1.5px solid var(--azulejo);background:var(--superficie);border-radius:14px;
     padding:10px 3px;min-height:80px;font-size:12px;font-weight:700;color:var(--cinza);
     cursor:pointer;transition:.15s;text-align:center;line-height:1.18}
   .chip .ci{font-size:22px;line-height:1}
@@ -149,6 +150,7 @@
   }
   :root[data-tema="escuro"] .valor-input input::placeholder{color:#3E5570}
   :root[data-tema="escuro"] header{background:#16355F}
+  :root[data-tema="escuro"] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='.05' stroke-width='1.2'%3E%3Cpath d='M28 4 L52 28 L28 52 L4 28 Z'/%3E%3Ccircle cx='28' cy='28' r='9'/%3E%3C/g%3E%3C/svg%3E")}
   @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
