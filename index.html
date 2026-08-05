@@ -6,6 +6,7 @@
 <title>Despesas de Viagem</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1E4E8C">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" href="icone-192.png">
 <link rel="apple-touch-icon" href="icone-192.png">
 <style>
@@ -13,6 +14,7 @@
     --cobalto:#1E4E8C; --cobalto-escuro:#16355F; --azulejo:#E9F0F8;
     --porcelana:#FAFBFD; --tinta:#182A40; --cinza:#6B7A8C;
     --dourado:#B8860B; --alerta:#B03A2E; --ok:#2E7D52;
+    --superficie:#FFFFFF; --apagar:#C6D2E0; color-scheme:light dark;
     --raio:14px; --sombra:0 2px 10px rgba(22,53,95,.10);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -45,19 +47,23 @@
   h2{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--cinza);margin:22px 4px 10px}
 
   /* ---------- Formulário de lançamento ---------- */
-  .cartao{background:#fff;border-radius:var(--raio);box-shadow:var(--sombra);padding:14px}
+  .cartao{background:var(--superficie);border-radius:var(--raio);box-shadow:var(--sombra);padding:14px}
   .valor-input{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--azulejo);padding:4px 2px 10px}
   .valor-input span{font-size:20px;font-weight:700;color:var(--cobalto)}
   .valor-input input{border:none;outline:none;font-size:34px;font-weight:700;width:100%;color:var(--tinta);background:transparent}
   .valor-input input::placeholder{color:#C6D2E0}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
-  .chip{border:1.5px solid var(--azulejo);background:var(--porcelana);border-radius:999px;
-    padding:8px 13px;font-size:13.5px;font-weight:600;color:var(--cinza);cursor:pointer;transition:.15s}
+  .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 4px}
+  .chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    border:1.5px solid var(--azulejo);background:var(--porcelana);border-radius:14px;
+    padding:10px 3px;min-height:76px;font-size:10.8px;font-weight:600;color:var(--cinza);
+    cursor:pointer;transition:.15s;text-align:center;line-height:1.15}
+  .chip .ci{font-size:22px;line-height:1}
   .chip.ativo{background:var(--cobalto);border-color:var(--cobalto);color:#fff}
-  .chips-pgto{margin-top:12px;margin-bottom:0}
-  .chips-pgto .chip{padding:7px 12px;font-size:12.5px}
+  .chips-pgto{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;margin-bottom:0}
+  .chips-pgto .chip{flex-direction:row;min-height:auto;border-radius:999px;padding:8px 13px;font-size:12.5px;gap:6px}
+  .chips-pgto .chip .ci{font-size:14px}
   .linha2{display:flex;gap:10px;margin-top:12px}
-  .linha2 input{flex:1;min-width:0;border:1.5px solid var(--azulejo);border-radius:10px;padding:11px 12px;font-size:15px;outline:none}
+  .linha2 input{flex:1;min-width:0;border:1.5px solid var(--azulejo);border-radius:10px;padding:11px 12px;font-size:15px;outline:none;background:var(--superficie);color:var(--tinta)}
   .linha2 input:focus{border-color:var(--cobalto)}
   .linha2 input[type=date]{flex:0 0 46%}
   .btn-principal{width:100%;margin-top:14px;background:var(--cobalto);color:#fff;border:none;
@@ -67,7 +73,7 @@
 
   /* ---------- Resumo por categoria ---------- */
   .grade-cat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .cat-cartao{background:#fff;border-radius:var(--raio);box-shadow:var(--sombra);padding:12px}
+  .cat-cartao{background:var(--superficie);border-radius:var(--raio);box-shadow:var(--sombra);padding:12px}
   .cat-cartao .nome{font-size:12.5px;font-weight:600;color:var(--cinza);display:flex;gap:6px;align-items:center}
   .cat-cartao .gasto{font-size:19px;font-weight:700;margin-top:5px}
   .cat-cartao .meta{font-size:11.5px;color:var(--cinza);margin-top:1px}
@@ -78,7 +84,7 @@
   /* ---------- Lista de despesas ---------- */
   .dia-grupo .dia-rot{font-size:12px;font-weight:700;color:var(--cobalto);margin:16px 4px 7px;
     text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between}
-  .despesa{background:#fff;border-radius:12px;box-shadow:var(--sombra);padding:12px 13px;margin-bottom:8px;
+  .despesa{background:var(--superficie);border-radius:12px;box-shadow:var(--sombra);padding:12px 13px;margin-bottom:8px;
     display:flex;align-items:center;gap:11px}
   .despesa .ico{width:38px;height:38px;border-radius:10px;background:var(--azulejo);
     display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
@@ -86,21 +92,21 @@
   .despesa .desc{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .despesa .cat-nome{font-size:12px;color:var(--cinza)}
   .despesa .val{font-size:15.5px;font-weight:700;flex:none}
-  .despesa .apagar{border:none;background:none;color:#C6D2E0;font-size:17px;padding:4px;cursor:pointer;flex:none}
-  .vazio{text-align:center;color:var(--cinza);font-size:14px;padding:26px 10px;background:#fff;border-radius:var(--raio);box-shadow:var(--sombra)}
+  .despesa .apagar{border:none;background:none;color:var(--apagar);font-size:17px;padding:4px;cursor:pointer;flex:none}
+  .vazio{text-align:center;color:var(--cinza);font-size:14px;padding:26px 10px;background:var(--superficie);border-radius:var(--raio);box-shadow:var(--sombra)}
   .vazio b{color:var(--cobalto)}
 
   .acoes-rodape{display:flex;gap:10px;margin-top:20px}
-  .btn-sec{flex:1;background:#fff;border:1.5px solid var(--azulejo);color:var(--cobalto);
+  .btn-sec{flex:1;background:var(--superficie);border:1.5px solid var(--azulejo);color:var(--cobalto);
     border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
 
   /* ---------- Modal ---------- */
   .veu{position:fixed;inset:0;background:rgba(22,42,64,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
   .veu.aberto{display:flex}
-  .modal{background:#fff;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 18px 26px}
+  .modal{background:var(--superficie);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 18px 26px}
   .modal h3{font-size:18px;margin-bottom:14px;color:var(--cobalto)}
   .modal label{display:block;font-size:12.5px;font-weight:700;color:var(--cinza);margin:12px 2px 5px}
-  .modal input{width:100%;border:1.5px solid var(--azulejo);border-radius:10px;padding:12px;font-size:15px;outline:none}
+  .modal input{width:100%;border:1.5px solid var(--azulejo);border-radius:10px;padding:12px;font-size:15px;outline:none;background:var(--superficie);color:var(--tinta)}
   .modal input:focus{border-color:var(--cobalto)}
   .modal .btn-principal{margin-top:18px}
   .modal .fechar{width:100%;margin-top:8px;background:none;border:none;color:var(--cinza);font-size:14px;padding:10px;cursor:pointer}
@@ -110,13 +116,13 @@
 
   .doc-linha{display:flex;align-items:center;gap:11px;padding:12px 4px;border-bottom:1px solid var(--azulejo);cursor:pointer}
   .doc-fixo{background:var(--azulejo);border-radius:12px;padding:12px;border-bottom:none;margin-bottom:6px}
-  .doc-ico{width:38px;height:38px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+  .doc-ico{width:38px;height:38px;border-radius:10px;background:var(--superficie);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
   .doc-linha:not(.doc-fixo) .doc-ico{background:var(--azulejo)}
   .doc-info{flex:1;min-width:0}
   .doc-nome{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .doc-sub{font-size:12px;color:var(--cinza);margin-top:2px}
   .doc-abrir{font-size:12.5px;font-weight:700;color:var(--cobalto);flex:none}
-  .doc-apagar{border:none;background:none;color:#C6D2E0;font-size:16px;padding:4px;cursor:pointer;flex:none}
+  .doc-apagar{border:none;background:none;color:var(--apagar);font-size:16px;padding:4px;cursor:pointer;flex:none}
   .btn-anexar{display:block;text-align:center;margin-top:14px;border:1.5px dashed var(--cobalto);
     color:var(--cobalto);border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
   .doc-aviso{font-size:11.5px;color:var(--cinza);text-align:center;margin-top:8px}
@@ -135,6 +141,16 @@
     padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:.3s;z-index:60}
   .aviso.mostra{opacity:1;bottom:34px}
   .carregando{text-align:center;padding:60px 20px;color:var(--cinza)}
+  @media (prefers-color-scheme: dark){
+    :root{
+      --porcelana:#0E1621; --superficie:#182432; --azulejo:#28394E;
+      --tinta:#E9EFF6; --cinza:#94A6B9; --apagar:#4E6883;
+      --cobalto:#2E62AC; --cobalto-escuro:#1E4E8C;
+      --sombra:0 2px 12px rgba(0,0,0,.4);
+    }
+    .valor-input input::placeholder{color:#3E5570}
+    header{background:#16355F}
+  }
   @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -249,13 +265,13 @@
 
 <script>
 const CATS = [
-  {id:'hotel',    nome:'Hotéis',               ico:'🛏️', dica:'Nome do hotel (ex.: PortoBay Flores)'},
-  {id:'comida',   nome:'Alimentação',          ico:'🍽️', dica:'Restaurante, bar ou café'},
-  {id:'veiculo',  nome:'Veículo e combustível',ico:'🚗', dica:'Locadora, posto ou pedágio'},
-  {id:'atracao',  nome:'Atrações e ingressos', ico:'🎟️', dica:'Atração (ex.: Livraria Lello)'},
-  {id:'taxi',     nome:'Táxi e transporte',    ico:'🚕', dica:'Trajeto ou app (ex.: Uber p/ Marina)'},
-  {id:'compras',  nome:'Compras e presentes',  ico:'🛍️', dica:'Loja ou presente'},
-  {id:'diversos', nome:'Diversos',             ico:'✨', dica:'Descreva o gasto'},
+  {id:'hotel',    nome:'Hotéis',               ico:'🛏️', cor:'#2E62AC', dica:'Nome do hotel (ex.: PortoBay Flores)'},
+  {id:'comida',   nome:'Alimentação',          ico:'🍽️', cor:'#C9662B', dica:'Restaurante, bar ou café'},
+  {id:'veiculo',  nome:'Veículo',ico:'🚗', cor:'#2E7D52', dica:'Locadora, posto ou pedágio'},
+  {id:'atracao',  nome:'Atrações', ico:'🎟️', cor:'#7A4FBF', dica:'Atração (ex.: Livraria Lello)'},
+  {id:'taxi',     nome:'Transporte',    ico:'🚕', cor:'#B08A1E', dica:'Trajeto ou app (ex.: Uber p/ Marina)'},
+  {id:'compras',  nome:'Compras',  ico:'🛍️', cor:'#C2497D', dica:'Loja ou presente'},
+  {id:'diversos', nome:'Diversos',             ico:'✨', cor:'#188F8F', dica:'Descreva o gasto'},
 ];
 const PGTOS = [
   {id:'cartao',  nome:'Cartão',  ico:'💳'},
@@ -263,6 +279,8 @@ const PGTOS = [
   {id:'outra',   nome:'Outra',   ico:'🔁'},
 ];
 const CHAVE = 'despesas-viagem:dados';
+const tinte = (hex, a) => { const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; };
 
 const viagemInicial = () => ({
   id:'ib2026', nome:'Espanha & Portugal — Set/2026', moeda:'€', cambio:6.30, orcamento:3750,
@@ -307,7 +325,7 @@ function renderTudo(){
 
   // chips
   $('chipsCat').innerHTML = CATS.map(c =>
-    `<button class="chip ${c.id===catAtiva?'ativo':''}" data-cat="${c.id}">${c.ico} ${c.nome}</button>`).join('');
+    `<button class="chip ${c.id===catAtiva?'ativo':''}" data-cat="${c.id}" style="${c.id===catAtiva?`background:${c.cor};border-color:${c.cor};color:#fff`:`border-bottom:3px solid ${c.cor}`}"><span class="ci">${c.ico}</span><span>${c.nome}</span></button>`).join('');
   document.querySelectorAll('.chip').forEach(ch =>
     ch.onclick = () => { catAtiva = ch.dataset.cat; renderTudo(); });
 
@@ -319,7 +337,7 @@ function renderTudo(){
 
   // forma de pagamento
   $('chipsPgto').innerHTML = PGTOS.map(p =>
-    `<button class="chip ${p.id===pgtoAtivo?'ativo':''}" data-pgto="${p.id}">${p.ico} ${p.nome}</button>`).join('');
+    `<button class="chip ${p.id===pgtoAtivo?'ativo':''}" data-pgto="${p.id}"><span class="ci">${p.ico}</span><span>${p.nome}</span></button>`).join('');
   document.querySelectorAll('[data-pgto]').forEach(ch =>
     ch.onclick = () => { pgtoAtivo = ch.dataset.pgto; renderTudo(); });
 
@@ -338,12 +356,12 @@ function renderTudo(){
     const g = v.despesas.filter(d=>d.cat===c.id).reduce((s,d)=>s+d.valor,0);
     const meta = (v.metas && v.metas[c.id]) || 0;
     const p = meta ? Math.min(100, g/meta*100) : (g>0?100:0);
-    return `<div class="cat-cartao" data-cat="${c.id}" role="button" tabindex="0">
+    return `<div class="cat-cartao" data-cat="${c.id}" role="button" tabindex="0" style="border-left:4px solid ${c.cor}">
       <div class="nome">${c.ico} ${c.nome}</div>
-      <div class="gasto num">${fmt(g, v.moeda)}</div>
+      <div class="gasto num" style="color:${c.cor}">${fmt(g, v.moeda)}</div>
       <div class="meta num">${meta ? 'meta ' + fmt(meta, v.moeda) : 'sem meta'}</div>
-      <div class="mini-barra"><i class="${meta&&g>meta?'estouro':''}" style="width:${p}%"></i></div>
-      <div class="ver-detalhe">ver detalhes ›</div>
+      <div class="mini-barra"><i class="${meta&&g>meta?'estouro':''}" style="width:${p}%;${meta&&g>meta?'':'background:'+c.cor}"></i></div>
+      <div class="ver-detalhe" style="color:${c.cor}">ver detalhes ›</div>
     </div>`;
   }).join('');
   document.querySelectorAll('.cat-cartao').forEach(card => {
@@ -369,7 +387,7 @@ function renderTudo(){
           const c = CATS.find(x=>x.id===d.cat) || CATS[6];
           const pg = PGTOS.find(x=>x.id===d.pgto);
           return `<div class="despesa">
-            <div class="ico">${c.ico}</div>
+            <div class="ico" style="background:${tinte(c.cor,.16)}">${c.ico}</div>
             <div class="info">
               <div class="desc">${d.desc || c.nome}</div>
               <div class="cat-nome">${c.nome}${pg ? ' · ' + pg.ico + ' ' + pg.nome : ''} · ${fmtBRL(d.valor*v.cambio)}</div>
@@ -502,6 +520,7 @@ function abrirCategoria(catId){
   const lista = Object.values(grupos).sort((a,b) => b.total - a.total);
 
   $('catTitulo').textContent = `${c.ico} ${c.nome} — ${fmt(total, v.moeda)}`;
+  $('catTitulo').style.color = c.cor;
   $('catMetaLinha').textContent = meta
     ? `meta ${fmt(meta, v.moeda)} · ${total<=meta ? 'restam ' + fmt(meta-total, v.moeda) : 'estourou ' + fmt(total-meta, v.moeda)} · ${fmtBRL(total*v.cambio)}`
     : `equivale a ${fmtBRL(total*v.cambio)}`;
