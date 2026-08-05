@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Despesas de Viagem</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1E4E8C">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<style>
+  :root{
+    --cobalto:#1E4E8C; --cobalto-escuro:#16355F; --azulejo:#E9F0F8;
+    --porcelana:#FAFBFD; --tinta:#182A40; --cinza:#6B7A8C;
+    --dourado:#B8860B; --alerta:#B03A2E; --ok:#2E7D52;
+    --raio:14px; --sombra:0 2px 10px rgba(22,53,95,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--porcelana);color:var(--tinta);min-height:100vh}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+  /* ---------- Cabeçalho azulejo ---------- */
+  header{
+    background:var(--cobalto);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='.09' stroke-width='1.4'%3E%3Cpath d='M28 4 L52 28 L28 52 L4 28 Z'/%3E%3Ccircle cx='28' cy='28' r='9'/%3E%3Cpath d='M28 19 q4 4.5 0 9 q-4 -4.5 0 -9 M19 28 q4.5 4 9 0 q-4.5 -4 -9 0 M28 37 q4 -4.5 0 -9 q-4 4.5 0 9 M37 28 q-4.5 4 -9 0 q4.5 -4 9 0'/%3E%3C/g%3E%3C/svg%3E");
+    color:#fff;padding:18px 18px 22px;border-radius:0 0 26px 26px;box-shadow:var(--sombra)
+  }
+  .topo{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .topo select{
+    flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);
+    color:#fff;font-size:15px;font-weight:600;padding:9px 12px;border-radius:10px;appearance:none
+  }
+  .topo select option{color:var(--tinta)}
+  .btn-icone{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;
+    width:40px;height:40px;border-radius:10px;font-size:19px;flex:none;cursor:pointer}
+  .placar{margin-top:16px}
+  .placar .rot{font-size:11px;text-transform:uppercase;letter-spacing:.14em;opacity:.85}
+  .placar .valor{font-size:38px;font-weight:700;line-height:1.1;margin-top:2px}
+  .placar .sub{font-size:13px;opacity:.9;margin-top:2px}
+  .barra{height:9px;background:rgba(255,255,255,.22);border-radius:6px;margin-top:12px;overflow:hidden}
+  .barra i{display:block;height:100%;background:#fff;border-radius:6px;transition:width .5s ease}
+  .barra i.estouro{background:#FFB4A8}
+
+  main{padding:16px 14px 110px;max-width:520px;margin:0 auto}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--cinza);margin:22px 4px 10px}
+
+  /* ---------- Formulário de lançamento ---------- */
+  .cartao{background:#fff;border-radius:var(--raio);box-shadow:var(--sombra);padding:14px}
+  .valor-input{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--azulejo);padding:4px 2px 10px}
+  .valor-input span{font-size:20px;font-weight:700;color:var(--cobalto)}
+  .valor-input input{border:none;outline:none;font-size:34px;font-weight:700;width:100%;color:var(--tinta);background:transparent}
+  .valor-input input::placeholder{color:#C6D2E0}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+  .chip{border:1.5px solid var(--azulejo);background:var(--porcelana);border-radius:999px;
+    padding:8px 13px;font-size:13.5px;font-weight:600;color:var(--cinza);cursor:pointer;transition:.15s}
+  .chip.ativo{background:var(--cobalto);border-color:var(--cobalto);color:#fff}
+  .chips-pgto{margin-top:12px;margin-bottom:0}
+  .chips-pgto .chip{padding:7px 12px;font-size:12.5px}
+  .linha2{display:flex;gap:10px;margin-top:12px}
+  .linha2 input{flex:1;min-width:0;border:1.5px solid var(--azulejo);border-radius:10px;padding:11px 12px;font-size:15px;outline:none}
+  .linha2 input:focus{border-color:var(--cobalto)}
+  .linha2 input[type=date]{flex:0 0 46%}
+  .btn-principal{width:100%;margin-top:14px;background:var(--cobalto);color:#fff;border:none;
+    border-radius:12px;padding:15px;font-size:16px;font-weight:700;cursor:pointer}
+  .btn-principal:active{background:var(--cobalto-escuro)}
+  .conversao{text-align:center;font-size:12.5px;color:var(--cinza);margin-top:9px}
+
+  /* ---------- Resumo por categoria ---------- */
+  .grade-cat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cat-cartao{background:#fff;border-radius:var(--raio);box-shadow:var(--sombra);padding:12px}
+  .cat-cartao .nome{font-size:12.5px;font-weight:600;color:var(--cinza);display:flex;gap:6px;align-items:center}
+  .cat-cartao .gasto{font-size:19px;font-weight:700;margin-top:5px}
+  .cat-cartao .meta{font-size:11.5px;color:var(--cinza);margin-top:1px}
+  .mini-barra{height:5px;background:var(--azulejo);border-radius:4px;margin-top:8px;overflow:hidden}
+  .mini-barra i{display:block;height:100%;background:var(--cobalto);border-radius:4px}
+  .mini-barra i.estouro{background:var(--alerta)}
+
+  /* ---------- Lista de despesas ---------- */
+  .dia-grupo .dia-rot{font-size:12px;font-weight:700;color:var(--cobalto);margin:16px 4px 7px;
+    text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between}
+  .despesa{background:#fff;border-radius:12px;box-shadow:var(--sombra);padding:12px 13px;margin-bottom:8px;
+    display:flex;align-items:center;gap:11px}
+  .despesa .ico{width:38px;height:38px;border-radius:10px;background:var(--azulejo);
+    display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+  .despesa .info{flex:1;min-width:0}
+  .despesa .desc{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .despesa .cat-nome{font-size:12px;color:var(--cinza)}
+  .despesa .val{font-size:15.5px;font-weight:700;flex:none}
+  .despesa .apagar{border:none;background:none;color:#C6D2E0;font-size:17px;padding:4px;cursor:pointer;flex:none}
+  .vazio{text-align:center;color:var(--cinza);font-size:14px;padding:26px 10px;background:#fff;border-radius:var(--raio);box-shadow:var(--sombra)}
+  .vazio b{color:var(--cobalto)}
+
+  .acoes-rodape{display:flex;gap:10px;margin-top:20px}
+  .btn-sec{flex:1;background:#fff;border:1.5px solid var(--azulejo);color:var(--cobalto);
+    border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
+
+  /* ---------- Modal ---------- */
+  .veu{position:fixed;inset:0;background:rgba(22,42,64,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .veu.aberto{display:flex}
+  .modal{background:#fff;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 18px 26px}
+  .modal h3{font-size:18px;margin-bottom:14px;color:var(--cobalto)}
+  .modal label{display:block;font-size:12.5px;font-weight:700;color:var(--cinza);margin:12px 2px 5px}
+  .modal input{width:100%;border:1.5px solid var(--azulejo);border-radius:10px;padding:12px;font-size:15px;outline:none}
+  .modal input:focus{border-color:var(--cobalto)}
+  .modal .btn-principal{margin-top:18px}
+  .modal .fechar{width:100%;margin-top:8px;background:none;border:none;color:var(--cinza);font-size:14px;padding:10px;cursor:pointer}
+  .modal .zona-perigo{margin-top:14px;border-top:1px solid var(--azulejo);padding-top:12px}
+  .modal .zona-perigo button{width:100%;background:none;border:1.5px solid #F1D3CE;color:var(--alerta);
+    border-radius:10px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer}
+
+  .cat-cartao{cursor:pointer}
+  .cat-cartao:active{transform:scale(.98)}
+  .ver-detalhe{font-size:11px;color:var(--cobalto);font-weight:700;margin-top:8px}
+  .cat-meta-linha{font-size:13px;color:var(--cinza);margin:-6px 0 12px}
+  .estab-linha{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:12px 2px;border-bottom:1px solid var(--azulejo)}
+  .estab-linha:last-child{border-bottom:none}
+  .estab-nome{font-size:15px;font-weight:700}
+  .estab-sub{font-size:12px;color:var(--cinza);margin-top:2px}
+  .estab-linha .val{font-size:15.5px;font-weight:700;flex:none}
+  #catDetalhe{max-height:52vh;overflow-y:auto}
+  .aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--tinta);color:#fff;
+    padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:.3s;z-index:60}
+  .aviso.mostra{opacity:1;bottom:34px}
+  .carregando{text-align:center;padding:60px 20px;color:var(--cinza)}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="topo">
+    <select id="selViagem" aria-label="Escolher viagem"></select>
+    <button class="btn-icone" id="btnConfig" title="Ajustes da viagem">⚙</button>
+    <button class="btn-icone" id="btnNova" title="Nova viagem">＋</button>
+  </div>
+  <div class="placar">
+    <div class="rot">Total gasto</div>
+    <div class="valor num" id="totalGasto">€ 0,00</div>
+    <div class="sub num" id="subLinha">de € 0 planejados · R$ 0</div>
+    <div class="barra"><i id="barraTotal" style="width:0%"></i></div>
+  </div>
+</header>
+
+<main>
+  <h2>Novo lançamento</h2>
+  <div class="cartao">
+    <div class="valor-input">
+      <span id="simboloMoeda">€</span>
+      <input id="inpValor" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" aria-label="Valor">
+    </div>
+    <div class="chips" id="chipsCat"></div>
+    <div class="linha2">
+      <input id="inpDesc" type="text" list="listaEstab" placeholder="Restaurante, bar ou café" maxlength="60">
+      <datalist id="listaEstab"></datalist>
+      <input id="inpData" type="date">
+    </div>
+    <div class="chips chips-pgto" id="chipsPgto" aria-label="Forma de pagamento"></div>
+    <button class="btn-principal" id="btnSalvar">Salvar despesa</button>
+    <div class="conversao num" id="linhaConversao"></div>
+  </div>
+
+  <h2>Por categoria</h2>
+  <div class="grade-cat" id="gradeCat"></div>
+
+  <h2>Lançamentos</h2>
+  <div id="listaDespesas"></div>
+
+  <div class="acoes-rodape">
+    <button class="btn-sec" id="btnCSV">Baixar CSV</button>
+    <button class="btn-sec" id="btnCopiar">Copiar resumo</button>
+  </div>
+</main>
+
+<!-- Modal: nova viagem / ajustes -->
+<div class="veu" id="veu">
+  <div class="modal">
+    <h3 id="modalTitulo">Nova viagem</h3>
+    <label for="mNome">Nome da viagem</label>
+    <input id="mNome" type="text" placeholder="ex.: Argentina — Julho 2027" maxlength="48">
+    <label for="mMoeda">Símbolo da moeda local</label>
+    <input id="mMoeda" type="text" placeholder="€, US$, $..." maxlength="4">
+    <label for="mOrc">Orçamento total (na moeda local)</label>
+    <input id="mOrc" type="number" inputmode="decimal" step="0.01" min="0" placeholder="3750">
+    <label for="mCambio">Câmbio para R$ (1 unidade = ? reais)</label>
+    <input id="mCambio" type="number" inputmode="decimal" step="0.01" min="0" placeholder="6.30">
+    <button class="btn-principal" id="mSalvar">Salvar</button>
+    <button class="fechar" id="mFechar">Cancelar</button>
+    <div class="zona-perigo" id="zonaPerigo" style="display:none">
+      <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: detalhe da categoria por estabelecimento -->
+<div class="veu" id="veuCat">
+  <div class="modal">
+    <h3 id="catTitulo"></h3>
+    <div class="cat-meta-linha num" id="catMetaLinha"></div>
+    <div id="catDetalhe"></div>
+    <button class="fechar" id="catFechar">Fechar</button>
+  </div>
+</div>
+
+<div class="aviso" id="aviso"></div>
+
+<script>
+const CATS = [
+  {id:'hotel',    nome:'Hotéis',               ico:'🛏️', dica:'Nome do hotel (ex.: PortoBay Flores)'},
+  {id:'comida',   nome:'Alimentação',          ico:'🍽️', dica:'Restaurante, bar ou café'},
+  {id:'veiculo',  nome:'Veículo e combustível',ico:'🚗', dica:'Locadora, posto ou pedágio'},
+  {id:'atracao',  nome:'Atrações e ingressos', ico:'🎟️', dica:'Atração (ex.: Livraria Lello)'},
+  {id:'taxi',     nome:'Táxi e transporte',    ico:'🚕', dica:'Trajeto ou app (ex.: Uber p/ Marina)'},
+  {id:'compras',  nome:'Compras e presentes',  ico:'🛍️', dica:'Loja ou presente'},
+  {id:'diversos', nome:'Diversos',             ico:'✨', dica:'Descreva o gasto'},
+];
+const PGTOS = [
+  {id:'cartao',  nome:'Cartão',  ico:'💳'},
+  {id:'especie', nome:'Espécie', ico:'💶'},
+  {id:'outra',   nome:'Outra',   ico:'🔁'},
+];
+const CHAVE = 'despesas-viagem:dados';
+
+const viagemInicial = () => ({
+  id:'ib2026', nome:'Espanha & Portugal — Set/2026', moeda:'€', cambio:6.30, orcamento:3750,
+  metas:{hotel:1525, comida:790, veiculo:740, atracao:248, taxi:106, compras:0, diversos:341},
+  despesas:[]
+});
+
+let dados = null;
+let catAtiva = 'comida';
+let pgtoAtivo = 'cartao';
+let editandoViagem = false;
+
+const $ = id => document.getElementById(id);
+const fmt = (v, s) => (s||'€') + ' ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtBRL = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
+const hoje = () => new Date().toISOString().slice(0,10);
+const viagem = () => dados.viagens.find(v => v.id === dados.ativa) || dados.viagens[0];
+
+async function carregar(){
+  try{
+    dados = JSON.parse(localStorage.getItem(CHAVE));
+    if(!dados || !dados.viagens || !dados.viagens.length) throw new Error('vazio');
+  }catch(e){
+    dados = {viagens:[viagemInicial()], ativa:'ib2026'};
+    await gravar();
+  }
+  renderTudo();
+}
+async function gravar(){
+  try{
+    localStorage.setItem(CHAVE, JSON.stringify(dados));
+  }catch(e){ avisar('Não consegui salvar — espaço cheio?'); }
+}
+
+function renderTudo(){
+  const v = viagem();
+  // seletor de viagens
+  $('selViagem').innerHTML = dados.viagens.map(t =>
+    `<option value="${t.id}" ${t.id===dados.ativa?'selected':''}>${t.nome}</option>`).join('');
+  $('simboloMoeda').textContent = v.moeda;
+  if(!$('inpData').value) $('inpData').value = hoje();
+
+  // chips
+  $('chipsCat').innerHTML = CATS.map(c =>
+    `<button class="chip ${c.id===catAtiva?'ativo':''}" data-cat="${c.id}">${c.ico} ${c.nome}</button>`).join('');
+  document.querySelectorAll('.chip').forEach(ch =>
+    ch.onclick = () => { catAtiva = ch.dataset.cat; renderTudo(); });
+
+  // campo inteligente: dica e sugestões de estabelecimentos da categoria ativa
+  const catObj = CATS.find(c => c.id === catAtiva) || CATS[6];
+  $('inpDesc').placeholder = catObj.dica;
+  const nomes = [...new Set(v.despesas.filter(d => d.cat === catAtiva && d.desc).map(d => d.desc))];
+  $('listaEstab').innerHTML = nomes.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+
+  // forma de pagamento
+  $('chipsPgto').innerHTML = PGTOS.map(p =>
+    `<button class="chip ${p.id===pgtoAtivo?'ativo':''}" data-pgto="${p.id}">${p.ico} ${p.nome}</button>`).join('');
+  document.querySelectorAll('[data-pgto]').forEach(ch =>
+    ch.onclick = () => { pgtoAtivo = ch.dataset.pgto; renderTudo(); });
+
+  // placar
+  const total = v.despesas.reduce((s,d)=>s+d.valor,0);
+  $('totalGasto').textContent = fmt(total, v.moeda);
+  $('subLinha').textContent = v.orcamento
+    ? `de ${fmt(v.orcamento, v.moeda)} planejados · ${fmtBRL(total*v.cambio)}`
+    : fmtBRL(total*v.cambio);
+  const pct = v.orcamento ? Math.min(100, total/v.orcamento*100) : 0;
+  const b = $('barraTotal'); b.style.width = pct+'%';
+  b.className = (v.orcamento && total > v.orcamento) ? 'estouro' : '';
+
+  // categorias
+  $('gradeCat').innerHTML = CATS.map(c => {
+    const g = v.despesas.filter(d=>d.cat===c.id).reduce((s,d)=>s+d.valor,0);
+    const meta = (v.metas && v.metas[c.id]) || 0;
+    const p = meta ? Math.min(100, g/meta*100) : (g>0?100:0);
+    return `<div class="cat-cartao" data-cat="${c.id}" role="button" tabindex="0">
+      <div class="nome">${c.ico} ${c.nome}</div>
+      <div class="gasto num">${fmt(g, v.moeda)}</div>
+      <div class="meta num">${meta ? 'meta ' + fmt(meta, v.moeda) : 'sem meta'}</div>
+      <div class="mini-barra"><i class="${meta&&g>meta?'estouro':''}" style="width:${p}%"></i></div>
+      <div class="ver-detalhe">ver detalhes ›</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.cat-cartao').forEach(card => {
+    card.onclick = () => abrirCategoria(card.dataset.cat);
+    card.onkeydown = e => { if(e.key==='Enter') abrirCategoria(card.dataset.cat); };
+  });
+
+  // lista agrupada por dia
+  const porDia = {};
+  [...v.despesas].sort((a,b)=> b.data.localeCompare(a.data) || b.id-a.id)
+    .forEach(d => { (porDia[d.data] = porDia[d.data]||[]).push(d); });
+  const dias = Object.keys(porDia);
+  if(!dias.length){
+    $('listaDespesas').innerHTML =
+      `<div class="vazio">Nenhum lançamento ainda.<br>Registre o primeiro gasto acima — <b>leva 10 segundos</b>.</div>`;
+  } else {
+    $('listaDespesas').innerHTML = dias.map(dia => {
+      const soma = porDia[dia].reduce((s,d)=>s+d.valor,0);
+      const [a,m,d2] = dia.split('-');
+      return `<div class="dia-grupo">
+        <div class="dia-rot"><span>${d2}/${m}/${a}</span><span class="num">${fmt(soma,v.moeda)}</span></div>
+        ${porDia[dia].map(d => {
+          const c = CATS.find(x=>x.id===d.cat) || CATS[6];
+          const pg = PGTOS.find(x=>x.id===d.pgto);
+          return `<div class="despesa">
+            <div class="ico">${c.ico}</div>
+            <div class="info">
+              <div class="desc">${d.desc || c.nome}</div>
+              <div class="cat-nome">${c.nome}${pg ? ' · ' + pg.ico + ' ' + pg.nome : ''} · ${fmtBRL(d.valor*v.cambio)}</div>
+            </div>
+            <div class="val num">${fmt(d.valor, v.moeda)}</div>
+            <button class="apagar" data-id="${d.id}" title="Apagar lançamento">✕</button>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+    document.querySelectorAll('.apagar').forEach(btn => btn.onclick = async () => {
+      const vg = viagem();
+      vg.despesas = vg.despesas.filter(d => d.id != btn.dataset.id);
+      await gravar(); renderTudo(); avisar('Lançamento apagado');
+    });
+  }
+  atualizarConversao();
+}
+
+function atualizarConversao(){
+  const v = viagem(), val = parseFloat($('inpValor').value);
+  $('linhaConversao').textContent = (val>0) ? `≈ ${fmtBRL(val*v.cambio)} (câmbio ${String(v.cambio).replace('.',',')})` : '';
+}
+
+$('inpValor').addEventListener('input', atualizarConversao);
+
+$('btnSalvar').onclick = async () => {
+  const v = viagem();
+  const valor = parseFloat($('inpValor').value);
+  if(!(valor > 0)){ avisar('Digite o valor da despesa'); $('inpValor').focus(); return; }
+  v.despesas.push({ id: Date.now(), data: $('inpData').value || hoje(),
+    cat: catAtiva, pgto: pgtoAtivo, desc: $('inpDesc').value.trim(), valor: Math.round(valor*100)/100 });
+  await gravar();
+  $('inpValor').value=''; $('inpDesc').value='';
+  renderTudo(); avisar('Despesa salva ✓');
+};
+
+$('selViagem').onchange = async e => { dados.ativa = e.target.value; await gravar(); renderTudo(); };
+
+// ---------- Modal nova viagem / ajustes ----------
+function abrirModal(editar){
+  editandoViagem = editar;
+  const v = viagem();
+  $('modalTitulo').textContent = editar ? 'Ajustes da viagem' : 'Nova viagem';
+  $('mNome').value   = editar ? v.nome : '';
+  $('mMoeda').value  = editar ? v.moeda : '';
+  $('mOrc').value    = editar ? (v.orcamento||'') : '';
+  $('mCambio').value = editar ? v.cambio : '';
+  $('zonaPerigo').style.display = (editar && dados.viagens.length > 1) ? 'block' : 'none';
+  $('veu').classList.add('aberto');
+}
+$('btnNova').onclick   = () => abrirModal(false);
+$('btnConfig').onclick = () => abrirModal(true);
+$('mFechar').onclick   = () => $('veu').classList.remove('aberto');
+
+$('mSalvar').onclick = async () => {
+  const nome = $('mNome').value.trim();
+  if(!nome){ avisar('Dê um nome à viagem'); return; }
+  const moeda  = $('mMoeda').value.trim() || '€';
+  const orc    = parseFloat($('mOrc').value) || 0;
+  const cambio = parseFloat($('mCambio').value) || 1;
+  if(editandoViagem){
+    const v = viagem();
+    Object.assign(v, {nome, moeda, orcamento:orc, cambio});
+  } else {
+    const nova = {id:'v'+Date.now(), nome, moeda, cambio, orcamento:orc, metas:{}, despesas:[]};
+    dados.viagens.push(nova); dados.ativa = nova.id;
+  }
+  await gravar(); $('veu').classList.remove('aberto'); renderTudo();
+  avisar(editandoViagem ? 'Ajustes salvos' : 'Viagem criada — boa estrada!');
+};
+
+$('mExcluir').onclick = async () => {
+  if(!confirm('Excluir esta viagem e todos os seus lançamentos? Não dá para desfazer.')) return;
+  dados.viagens = dados.viagens.filter(v => v.id !== dados.ativa);
+  dados.ativa = dados.viagens[0].id;
+  await gravar(); $('veu').classList.remove('aberto'); renderTudo(); avisar('Viagem excluída');
+};
+
+// ---------- Exportar ----------
+$('btnCSV').onclick = () => {
+  const v = viagem();
+  const linhas = [['Data','Categoria','Estabelecimento','Forma de pagamento','Valor ('+v.moeda+')','Valor (R$)']];
+  [...v.despesas].sort((a,b)=>a.data.localeCompare(b.data)).forEach(d => {
+    const c = CATS.find(x=>x.id===d.cat)||CATS[6];
+    const pg = PGTOS.find(x=>x.id===d.pgto);
+    linhas.push([d.data, c.nome, (d.desc||'').replace(/;/g,','), pg?pg.nome:'', String(d.valor).replace('.',','), String(Math.round(d.valor*v.cambio*100)/100).replace('.',',')]);
+  });
+  const csv = '\uFEFF' + linhas.map(l=>l.join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = v.nome.replace(/[^\w\d]+/g,'-') + '.csv';
+  a.click(); avisar('CSV gerado — abre direto no Excel');
+};
+
+$('btnCopiar').onclick = async () => {
+  const v = viagem();
+  const total = v.despesas.reduce((s,d)=>s+d.valor,0);
+  let txt = `${v.nome}\nTotal: ${fmt(total,v.moeda)} (${fmtBRL(total*v.cambio)})\n`;
+  CATS.forEach(c => {
+    const g = v.despesas.filter(d=>d.cat===c.id).reduce((s,d)=>s+d.valor,0);
+    if(g>0) txt += `${c.nome}: ${fmt(g,v.moeda)}\n`;
+  });
+  const somaPg = PGTOS.map(p => ({p, g: v.despesas.filter(d=>d.pgto===p.id).reduce((s,d)=>s+d.valor,0)}))
+    .filter(x => x.g > 0);
+  if(somaPg.length){
+    txt += '—\n';
+    somaPg.forEach(x => { txt += `${x.p.nome}: ${fmt(x.g, v.moeda)}\n`; });
+  }
+  try{ await navigator.clipboard.writeText(txt); avisar('Resumo copiado'); }
+  catch(e){ avisar('Não foi possível copiar neste navegador'); }
+};
+
+// ---------- Detalhe da categoria por estabelecimento ----------
+function abrirCategoria(catId){
+  const v = viagem();
+  const c = CATS.find(x => x.id === catId) || CATS[6];
+  const desp = v.despesas.filter(d => d.cat === catId);
+  const total = desp.reduce((s,d) => s + d.valor, 0);
+  const meta = (v.metas && v.metas[catId]) || 0;
+
+  // agrupa por estabelecimento (ignora maiúsculas/minúsculas, exibe o nome original)
+  const grupos = {};
+  desp.forEach(d => {
+    const nome = (d.desc || '').trim() || 'Sem nome informado';
+    const chave = nome.toLowerCase();
+    if(!grupos[chave]) grupos[chave] = {nome, total:0, n:0};
+    grupos[chave].total += d.valor; grupos[chave].n++;
+  });
+  const lista = Object.values(grupos).sort((a,b) => b.total - a.total);
+
+  $('catTitulo').textContent = `${c.ico} ${c.nome} — ${fmt(total, v.moeda)}`;
+  $('catMetaLinha').textContent = meta
+    ? `meta ${fmt(meta, v.moeda)} · ${total<=meta ? 'restam ' + fmt(meta-total, v.moeda) : 'estourou ' + fmt(total-meta, v.moeda)} · ${fmtBRL(total*v.cambio)}`
+    : `equivale a ${fmtBRL(total*v.cambio)}`;
+  $('catDetalhe').innerHTML = lista.length
+    ? lista.map(g => `<div class="estab-linha">
+        <div><div class="estab-nome">${g.nome}</div>
+        <div class="estab-sub">${g.n} lançamento${g.n>1?'s':''} · ${fmtBRL(g.total*v.cambio)}</div></div>
+        <div class="val num">${fmt(g.total, v.moeda)}</div>
+      </div>`).join('')
+    : `<div class="vazio">Nenhum lançamento em ${c.nome} ainda.</div>`;
+  $('veuCat').classList.add('aberto');
+}
+$('catFechar').onclick = () => $('veuCat').classList.remove('aberto');
+
+let avisoTimer;
+function avisar(msg){
+  const el = $('aviso'); el.textContent = msg; el.classList.add('mostra');
+  clearTimeout(avisoTimer); avisoTimer = setTimeout(()=>el.classList.remove('mostra'), 2200);
+}
+
+document.querySelector('main').insertAdjacentHTML('afterbegin','');
+carregar();
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
