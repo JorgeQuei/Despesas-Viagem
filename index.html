@@ -94,6 +94,9 @@
   .despesa .cat-nome{font-size:12px;color:var(--cinza)}
   .despesa .val{font-size:15.5px;font-weight:700;flex:none}
   .despesa .apagar{border:none;background:none;color:var(--apagar);font-size:17px;padding:4px;cursor:pointer;flex:none}
+  .despesa .vincular{border:none;background:none;font-size:15px;padding:4px;cursor:pointer;flex:none;opacity:.3;filter:grayscale(1)}
+  .despesa .vincular.tem{opacity:1;filter:none}
+  .despesa{cursor:pointer}
   .vazio{text-align:center;color:var(--cinza);font-size:14px;padding:26px 10px;background:var(--superficie);border-radius:var(--raio);box-shadow:var(--sombra)}
   .vazio b{color:var(--cobalto)}
 
@@ -253,6 +256,16 @@
   </div>
 </div>
 
+<!-- Modal: vincular anexo a uma despesa -->
+<div class="veu" id="veuVinculo">
+  <div class="modal">
+    <h3>📎 Vincular anexo</h3>
+    <div class="doc-aviso" id="vincDespesa" style="text-align:left;margin:0 0 10px"></div>
+    <div id="listaVinculo"></div>
+    <button class="fechar" id="vincFechar">Cancelar</button>
+  </div>
+</div>
+
 <!-- Modal: detalhe da categoria por estabelecimento -->
 <div class="veu" id="veuCat">
   <div class="modal">
@@ -270,6 +283,7 @@ const CATS = [
   {id:'hotel',    nome:'Hotéis',               ico:'🛏️', cor:'#2E62AC', dica:'Nome do hotel (ex.: PortoBay Flores)'},
   {id:'comida',   nome:'Alimentação',          ico:'🍽️', cor:'#C9662B', dica:'Restaurante, bar ou café'},
   {id:'veiculo',  nome:'Veículo',ico:'🚗', cor:'#2E7D52', dica:'Locadora, posto ou pedágio'},
+  {id:'voos',     nome:'Voos', ico:'✈️', cor:'#5A67D8', dica:'Companhia e trecho (ex.: TAP MAD-LIS)'},
   {id:'atracao',  nome:'Atrações', ico:'🎟️', cor:'#7A4FBF', dica:'Atração (ex.: Livraria Lello)'},
   {id:'taxi',     nome:'Transporte',    ico:'🚕', cor:'#B08A1E', dica:'Trajeto ou app (ex.: Uber p/ Marina)'},
   {id:'compras',  nome:'Compras',  ico:'🛍️', cor:'#C2497D', dica:'Loja ou presente'},
@@ -305,7 +319,7 @@ const tinte = (hex, a) => { const n = parseInt(hex.slice(1), 16);
 
 const viagemInicial = () => ({
   id:'ib2026', nome:'Espanha & Portugal — Set/2026', moeda:'€', cambio:6.30, orcamento:3750,
-  metas:{hotel:1525, comida:790, veiculo:740, atracao:248, taxi:106, compras:0, diversos:341},
+  metas:{hotel:1525, comida:790, veiculo:740, voos:380, atracao:248, taxi:106, compras:0, diversos:341},
   despesas:[]
 });
 
@@ -328,6 +342,9 @@ async function carregar(){
     dados = {viagens:[viagemInicial()], ativa:'ib2026'};
     await gravar();
   }
+  // migração: viagens criadas antes da categoria Voos ganham a meta sem perder nada
+  const vIb = dados.viagens.find(t => t.id === 'ib2026');
+  if(vIb && vIb.metas && vIb.metas.voos === undefined){ vIb.metas.voos = 380; await gravar(); }
   renderTudo();
 }
 async function gravar(){
@@ -407,22 +424,40 @@ function renderTudo(){
         ${porDia[dia].map(d => {
           const c = CATS.find(x=>x.id===d.cat) || CATS[6];
           const pg = PGTOS.find(x=>x.id===d.pgto);
-          return `<div class="despesa">
+          return `<div class="despesa" data-desp="${d.id}">
             <div class="ico" style="background:${tinte(c.cor,.16)}">${c.ico}</div>
             <div class="info">
               <div class="desc">${d.desc || c.nome}</div>
               <div class="cat-nome">${c.nome}${pg ? ' · ' + pg.ico + ' ' + pg.nome : ''} · ${fmtBRL(d.valor*v.cambio)}</div>
             </div>
             <div class="val num">${fmt(d.valor, v.moeda)}</div>
+            <button class="vincular ${d.anexoId?'tem':''}" data-vinc="${d.id}" title="Vincular anexo">📎</button>
             <button class="apagar" data-id="${d.id}" title="Apagar lançamento">✕</button>
           </div>`;
         }).join('')}
       </div>`;
     }).join('');
-    document.querySelectorAll('.apagar').forEach(btn => btn.onclick = async () => {
+    document.querySelectorAll('.apagar').forEach(btn => btn.onclick = async ev => {
+      ev.stopPropagation();
       const vg = viagem();
       vg.despesas = vg.despesas.filter(d => d.id != btn.dataset.id);
       await gravar(); renderTudo(); avisar('Lançamento apagado');
+    });
+    document.querySelectorAll('.vincular').forEach(btn => btn.onclick = ev => {
+      ev.stopPropagation();
+      abrirVinculo(btn.dataset.vinc);
+    });
+    document.querySelectorAll('.despesa[data-desp]').forEach(row => row.onclick = ev => {
+      if(ev.target.closest('button')) return;
+      const d = viagem().despesas.find(x => x.id == row.dataset.desp);
+      if(!d) return;
+      if(d.anexoId){
+        const doc = lerDocs().find(x => x.id == d.anexoId);
+        if(!doc){ avisar('O anexo vinculado foi apagado'); delete d.anexoId; gravar(); renderTudo(); return; }
+        abrirDocumento(doc);
+      } else {
+        abrirVinculo(d.id);
+      }
     });
   }
   atualizarConversao();
@@ -642,6 +677,53 @@ $('btnPin').onclick = async () => {
   renderDocs(); avisar('PIN ativado — anexos criptografados ✓');
 };
 
+async function abrirDocumento(doc){
+  let dataURL = doc.dados;
+  if(doc.cif){
+    if(!chaveSessao){ avisar('Destrave os anexos no 📄 primeiro (PIN)'); return; }
+    try{ dataURL = await decifrar(doc, chaveSessao); }
+    catch(e){ avisar('Falha ao decifrar o documento'); return; }
+  }
+  const partes = dataURL.split(',');
+  const bin = atob(partes[1]);
+  const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  window.open(URL.createObjectURL(new Blob([arr], {type: doc.tipo})), '_blank');
+}
+
+function abrirVinculo(idDespesa){
+  const v = viagem();
+  const d = v.despesas.find(x => x.id == idDespesa);
+  if(!d) return;
+  const c = CATS.find(x => x.id === d.cat) || CATS[6];
+  $('vincDespesa').innerHTML = `Despesa: <b>${d.desc || c.nome}</b> · ${fmt(d.valor, v.moeda)}`;
+  const docs = lerDocs();
+  if(!docs.length){
+    $('listaVinculo').innerHTML = '<div class="vazio">Nenhum anexo ainda.<br>Adicione vouchers em <b>📄 Documentos</b> primeiro.</div>';
+  } else {
+    $('listaVinculo').innerHTML = docs.map(doc => `
+      <div class="doc-linha" data-escolha="${doc.id}">
+        <div class="doc-ico">${doc.tipo.includes('pdf') ? '📕' : '🖼️'}</div>
+        <div class="doc-info"><div class="doc-nome">${doc.cif ? '🔒 ' : ''}${doc.nome}</div>
+        <div class="doc-sub">${doc.tam}</div></div>
+        <div class="doc-abrir">${d.anexoId == doc.id ? '✓ vinculado' : 'Escolher'}</div>
+      </div>`).join('') +
+      (d.anexoId ? `<div class="doc-linha" data-escolha="remover">
+        <div class="doc-ico">✕</div>
+        <div class="doc-info"><div class="doc-nome">Remover vínculo</div></div></div>` : '');
+    document.querySelectorAll('#listaVinculo [data-escolha]').forEach(el => el.onclick = async () => {
+      if(el.dataset.escolha === 'remover'){ delete d.anexoId; }
+      else { d.anexoId = Number(el.dataset.escolha); }
+      await gravar();
+      $('veuVinculo').classList.remove('aberto');
+      renderTudo();
+      avisar(el.dataset.escolha === 'remover' ? 'Vínculo removido' : 'Anexo vinculado ✓ — toque na despesa para abrir');
+    });
+  }
+  $('veuVinculo').classList.add('aberto');
+}
+$('vincFechar').onclick = () => $('veuVinculo').classList.remove('aberto');
+
 function renderDocs(){
   $('btnPin').style.display = pinAtivo() ? 'none' : 'block';
   const docs = lerDocs();
@@ -656,21 +738,10 @@ function renderDocs(){
       <button class="doc-apagar" data-del="${d.id}" title="Apagar anexo">✕</button>
     </div>`).join('');
   document.querySelectorAll('#listaDocs .doc-linha').forEach(el => {
-    el.onclick = async ev => {
+    el.onclick = ev => {
       if(ev.target.dataset.del) return;
       const doc = lerDocs().find(x => x.id == el.dataset.id);
-      if(!doc) return;
-      let dataURL = doc.dados;
-      if(doc.cif){
-        if(!chaveSessao){ avisar('Destrave com o PIN primeiro'); return; }
-        try{ dataURL = await decifrar(doc, chaveSessao); }
-        catch(e){ avisar('Falha ao decifrar o documento'); return; }
-      }
-      const partes = dataURL.split(',');
-      const bin = atob(partes[1]);
-      const arr = new Uint8Array(bin.length);
-      for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      window.open(URL.createObjectURL(new Blob([arr], {type: doc.tipo})), '_blank');
+      if(doc) abrirDocumento(doc);
     };
   });
   document.querySelectorAll('[data-del]').forEach(btn => {
