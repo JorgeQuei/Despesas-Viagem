@@ -348,6 +348,26 @@ let pgtoAtivo = 'cartao';
 let editandoViagem = false;
 
 const $ = id => document.getElementById(id);
+
+// Botão VOLTAR do Android: fecha a camada aberta em vez de sair do app
+const pilhaVoltar = [];
+let ignorarPop = false;
+function empilharVoltar(fechar){
+  pilhaVoltar.push(fechar);
+  history.pushState({camada: pilhaVoltar.length}, '');
+}
+function fecharTopo(){
+  const f = pilhaVoltar.pop();
+  if(!f) return;
+  ignorarPop = true;
+  history.back();
+  f();
+}
+window.addEventListener('popstate', () => {
+  if(ignorarPop){ ignorarPop = false; return; }
+  const f = pilhaVoltar.pop();
+  if(f) f();
+});
 const fmt = (v, s) => (s||'€') + ' ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtBRL = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
 const hoje = () => new Date().toISOString().slice(0,10);
@@ -514,10 +534,11 @@ function abrirModal(editar){
   $('zonaPerigo').style.display = (editar && dados.viagens.length > 1) ? 'block' : 'none';
   renderTemaChips();
   $('veu').classList.add('aberto');
+  empilharVoltar(() => $('veu').classList.remove('aberto'));
 }
 $('btnNova').onclick   = () => abrirModal(false);
 $('btnConfig').onclick = () => abrirModal(true);
-$('mFechar').onclick   = () => $('veu').classList.remove('aberto');
+$('mFechar').onclick   = fecharTopo;
 
 $('mSalvar').onclick = async () => {
   const nome = $('mNome').value.trim();
@@ -532,7 +553,7 @@ $('mSalvar').onclick = async () => {
     const nova = {id:'v'+Date.now(), nome, moeda, cambio, orcamento:orc, metas:{}, despesas:[]};
     dados.viagens.push(nova); dados.ativa = nova.id;
   }
-  await gravar(); $('veu').classList.remove('aberto'); renderTudo();
+  await gravar(); fecharTopo(); renderTudo();
   avisar(editandoViagem ? 'Ajustes salvos' : 'Viagem criada — boa estrada!');
 };
 
@@ -540,7 +561,7 @@ $('mExcluir').onclick = async () => {
   if(!confirm('Excluir esta viagem e todos os seus lançamentos? Não dá para desfazer.')) return;
   dados.viagens = dados.viagens.filter(v => v.id !== dados.ativa);
   dados.ativa = dados.viagens[0].id;
-  await gravar(); $('veu').classList.remove('aberto'); renderTudo(); avisar('Viagem excluída');
+  await gravar(); fecharTopo(); renderTudo(); avisar('Viagem excluída');
 };
 
 // ---------- Exportar ----------
@@ -608,8 +629,9 @@ function abrirCategoria(catId){
       </div>`).join('')
     : `<div class="vazio">Nenhum lançamento em ${c.nome} ainda.</div>`;
   $('veuCat').classList.add('aberto');
+  empilharVoltar(() => $('veuCat').classList.remove('aberto'));
 }
-$('catFechar').onclick = () => $('veuCat').classList.remove('aberto');
+$('catFechar').onclick = fecharTopo;
 
 // ---------- Documentos da viagem (com proteção opcional por PIN / AES-256) ----------
 const CHAVE_DOCS = 'despesas-viagem:docs';
@@ -652,8 +674,9 @@ $('btnDocs').onclick = () => {
   if(pinAtivo() && !chaveSessao){ mostrarTrava(true); }
   else { mostrarTrava(false); renderDocs(); }
   $('veuDocs').classList.add('aberto');
+  empilharVoltar(() => $('veuDocs').classList.remove('aberto'));
 };
-$('docsFechar').onclick = () => $('veuDocs').classList.remove('aberto');
+$('docsFechar').onclick = fecharTopo;
 async function abrirRoteiro(){
   try{
     const resp = await fetch('planejamento.pdf');
@@ -706,7 +729,7 @@ $('btnPin').onclick = async () => {
 // ---------- Visor interno (abre sem baixar; ⬇ baixa se quiser) ----------
 let visorBlob = null, visorNome = '';
 function fecharVisor(){ $('visor').classList.remove('aberto'); $('visorCorpo').innerHTML=''; visorBlob=null; }
-$('visorFechar').onclick = fecharVisor;
+$('visorFechar').onclick = fecharTopo;
 $('visorBaixar').onclick = () => {
   if(!visorBlob) return;
   const a = document.createElement('a');
@@ -731,6 +754,7 @@ async function mostrarNoVisor(nome, bytes, tipo){
   const corpo = $('visorCorpo');
   corpo.innerHTML = '<div class="visor-carregando">Abrindo…</div>';
   $('visor').classList.add('aberto');
+  empilharVoltar(fecharVisor);
   try{
     if(tipo.includes('pdf')){
       await garantirPdfJs();
@@ -797,14 +821,15 @@ function abrirVinculo(idDespesa){
       if(el.dataset.escolha === 'remover'){ delete d.anexoId; }
       else { d.anexoId = Number(el.dataset.escolha); }
       await gravar();
-      $('veuVinculo').classList.remove('aberto');
+      fecharTopo();
       renderTudo();
       avisar(el.dataset.escolha === 'remover' ? 'Vínculo removido' : 'Anexo vinculado ✓ — toque na despesa para abrir');
     });
   }
   $('veuVinculo').classList.add('aberto');
+  empilharVoltar(() => $('veuVinculo').classList.remove('aberto'));
 }
-$('vincFechar').onclick = () => $('veuVinculo').classList.remove('aberto');
+$('vincFechar').onclick = fecharTopo;
 
 function renderDocs(){
   $('btnPin').style.display = pinAtivo() ? 'none' : 'block';
