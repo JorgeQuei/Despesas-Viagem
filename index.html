@@ -256,6 +256,16 @@
   </div>
 </div>
 
+<!-- Visor de documentos em tela cheia -->
+<div id="visor" style="display:none">
+  <div class="visor-topo">
+    <button class="btn-icone" id="visorFechar" title="Fechar">‹</button>
+    <div class="visor-titulo" id="visorTitulo"></div>
+    <button class="btn-icone" id="visorBaixar" title="Baixar arquivo">⬇</button>
+  </div>
+  <div class="visor-corpo" id="visorCorpo"></div>
+</div>
+
 <!-- Modal: vincular anexo a uma despesa -->
 <div class="veu" id="veuVinculo">
   <div class="modal">
@@ -635,8 +645,15 @@ $('btnDocs').onclick = () => {
   $('veuDocs').classList.add('aberto');
 };
 $('docsFechar').onclick = () => $('veuDocs').classList.remove('aberto');
-$('abrirRoteiro').onclick = () => window.open('planejamento.pdf', '_blank');
-$('abrirRoteiro').onkeydown = e => { if(e.key==='Enter') window.open('planejamento.pdf', '_blank'); };
+async function abrirRoteiro(){
+  try{
+    const resp = await fetch('planejamento.pdf');
+    if(!resp.ok) throw 0;
+    mostrarNoVisor('Planejamento da viagem', new Uint8Array(await resp.arrayBuffer()), 'application/pdf');
+  }catch(e){ avisar('Roteiro indisponível — abra uma vez com internet'); }
+}
+$('abrirRoteiro').onclick = abrirRoteiro;
+$('abrirRoteiro').onkeydown = e => { if(e.key==='Enter') abrirRoteiro(); };
 
 $('btnDestravar').onclick = async () => {
   const pin = $('inpPin').value;
@@ -677,6 +694,63 @@ $('btnPin').onclick = async () => {
   renderDocs(); avisar('PIN ativado — anexos criptografados ✓');
 };
 
+// ---------- Visor interno (abre sem baixar; ⬇ baixa se quiser) ----------
+let visorBlob = null, visorNome = '';
+function fecharVisor(){ $('visor').classList.remove('aberto'); $('visorCorpo').innerHTML=''; visorBlob=null; }
+$('visorFechar').onclick = fecharVisor;
+$('visorBaixar').onclick = () => {
+  if(!visorBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(visorBlob); a.download = visorNome || 'documento';
+  a.click(); avisar('Arquivo salvo em Downloads');
+};
+
+async function garantirPdfJs(){
+  if(window.pdfjsLib) return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+async function mostrarNoVisor(nome, bytes, tipo){
+  visorNome = nome; visorBlob = new Blob([bytes], {type: tipo});
+  $('visorTitulo').textContent = nome;
+  const corpo = $('visorCorpo');
+  corpo.innerHTML = '<div class="visor-carregando">Abrindo…</div>';
+  $('visor').classList.add('aberto');
+  try{
+    if(tipo.includes('pdf')){
+      await garantirPdfJs();
+      const pdf = await pdfjsLib.getDocument({data: bytes.slice(0)}).promise;
+      corpo.innerHTML = '';
+      const larg = corpo.clientWidth - 20;
+      for(let p = 1; p <= pdf.numPages; p++){
+        const pag = await pdf.getPage(p);
+        const base = pag.getViewport({scale: 1});
+        const escala = (larg / base.width) * Math.min(window.devicePixelRatio || 1, 2);
+        const vp = pag.getViewport({scale: escala});
+        const cv = document.createElement('canvas');
+        cv.width = vp.width; cv.height = vp.height;
+        corpo.appendChild(cv);
+        await pag.render({canvasContext: cv.getContext('2d'), viewport: vp}).promise;
+      }
+    } else {
+      corpo.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(visorBlob);
+      corpo.appendChild(img);
+    }
+  }catch(e){
+    // sem pdf.js disponível (1ª vez offline): cai no download tradicional
+    corpo.innerHTML = '<div class="visor-carregando">Não consegui exibir aqui — baixando o arquivo…</div>';
+    $('visorBaixar').click();
+  }
+}
+
 async function abrirDocumento(doc){
   let dataURL = doc.dados;
   if(doc.cif){
@@ -684,11 +758,10 @@ async function abrirDocumento(doc){
     try{ dataURL = await decifrar(doc, chaveSessao); }
     catch(e){ avisar('Falha ao decifrar o documento'); return; }
   }
-  const partes = dataURL.split(',');
-  const bin = atob(partes[1]);
+  const bin = atob(dataURL.split(',')[1]);
   const arr = new Uint8Array(bin.length);
   for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  window.open(URL.createObjectURL(new Blob([arr], {type: doc.tipo})), '_blank');
+  mostrarNoVisor(doc.nome, arr, doc.tipo);
 }
 
 function abrirVinculo(idDespesa){

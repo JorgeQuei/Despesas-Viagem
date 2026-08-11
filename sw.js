@@ -23,7 +23,9 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  const mesmaOrigem = new URL(e.request.url).origin === self.location.origin;
+  const url = new URL(e.request.url);
+  const mesmaOrigem = url.origin === self.location.origin;
+  const ehCdnConfiavel = url.host === 'cdnjs.cloudflare.com';
 
   // Navegação / HTML: rede primeiro
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
@@ -41,7 +43,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(emCache => {
       const daRede = fetch(e.request).then(resp => {
-        if (resp.ok && mesmaOrigem) {
+        if (resp.ok && (mesmaOrigem || ehCdnConfiavel)) {
           const copia = resp.clone();
           caches.open(CACHE).then(c => c.put(e.request, copia));
         }
