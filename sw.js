@@ -1,7 +1,7 @@
 // Service worker v3 — corrige atualização travada:
 // HTML: rede primeiro (atualiza na hora; cache só como reserva offline)
 // Demais arquivos: cache imediato + revalidação em segundo plano
-const CACHE = 'despesas-viagem-v3';
+const CACHE = 'despesas-viagem-v4';
 const NUCLEO = ['.', 'index.html', 'manifest.webmanifest', 'icone-192.png', 'icone-512.png'];
 
 self.addEventListener('install', e => {
@@ -30,7 +30,7 @@ self.addEventListener('fetch', e => {
   // Navegação / HTML: rede primeiro
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
-      fetch(e.request).then(resp => {
+      fetch(e.request, {cache: 'no-cache'}).then(resp => {
         const copia = resp.clone();
         caches.open(CACHE).then(c => c.put(e.request, copia));
         return resp;
