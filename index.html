@@ -1064,17 +1064,20 @@ function abrirPainel(){
       alca.style.top = novo + 'px';
     }
   }, {passive:true});
+  let arrastouAgora = false;
   alca.addEventListener('touchend', () => {
     if(moveu){
       const pct = (alca.getBoundingClientRect().top / window.innerHeight * 100).toFixed(1) + '%';
       alca.style.top = pct;
       localStorage.setItem(CHAVE_ALCA, pct);
       avisar('Posição da alça memorizada');
-    } else {
-      abrirPainel();
+      arrastouAgora = true;
+      setTimeout(() => arrastouAgora = false, 450);
     }
   });
-  alca.onclick = e => { if(!('ontouchstart' in window)) abrirPainel(); };
+  // o clique é o abridor universal (dispara após o toque em qualquer navegador);
+  // só é suprimido no instante seguinte a um arraste
+  alca.onclick = () => { if(!arrastouAgora) abrirPainel(); };
 })();
 $('painelVeu').onclick = fecharTopo;
 $('pcAdd').onclick = () => {
