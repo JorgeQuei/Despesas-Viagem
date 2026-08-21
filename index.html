@@ -150,6 +150,46 @@
   .visor-corpo img{width:100%;border-radius:10px;box-shadow:var(--sombra)}
   .visor-corpo canvas{display:block;width:100%;margin:0 auto 10px;border-radius:6px;box-shadow:var(--sombra)}
   .visor-carregando{text-align:center;color:var(--cinza);padding:40px 20px}
+  .edge-alca{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:45;
+    background:var(--cobalto);color:#fff;border:none;border-radius:12px 0 0 12px;
+    padding:16px 7px;font-size:13px;cursor:pointer;box-shadow:-2px 2px 8px rgba(22,53,95,.25);
+    writing-mode:vertical-rl;letter-spacing:.12em;font-weight:700}
+  .edge-alca .badge{position:absolute;top:-7px;left:-7px;background:var(--alerta);color:#fff;
+    border-radius:999px;min-width:20px;height:20px;font-size:11.5px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;writing-mode:horizontal-tb;padding:0 4px}
+  .painel-veu{position:fixed;inset:0;background:rgba(22,42,64,.45);z-index:52;display:none}
+  .painel-veu.aberto{display:block}
+  #painelCheck{position:fixed;top:0;right:0;bottom:0;width:min(88vw,400px);z-index:53;
+    background:var(--porcelana);box-shadow:-6px 0 24px rgba(22,42,64,.3);
+    transform:translateX(105%);transition:transform .28s ease;display:flex;flex-direction:column}
+  #painelCheck.aberto{transform:translateX(0)}
+  .pc-topo{background:var(--cobalto);color:#fff;padding:16px 16px 14px;flex:none}
+  .pc-topo h3{font-size:17px;margin-bottom:8px}
+  .pc-prog{height:8px;background:rgba(255,255,255,.25);border-radius:6px;overflow:hidden}
+  .pc-prog i{display:block;height:100%;background:#fff;border-radius:6px;transition:width .4s}
+  .pc-sub{font-size:12px;opacity:.9;margin-top:6px}
+  .pc-lista{flex:1;overflow-y:auto;padding:10px 12px;-webkit-overflow-scrolling:touch}
+  .pc-item{display:flex;align-items:flex-start;gap:10px;background:var(--superficie);
+    border-radius:12px;box-shadow:var(--sombra);padding:11px 12px;margin-bottom:8px}
+  .pc-caixa{width:24px;height:24px;border-radius:8px;border:2px solid var(--azulejo);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;cursor:pointer;margin-top:1px}
+  .pc-item.feito .pc-caixa{background:var(--ok);border-color:var(--ok)}
+  .pc-info{flex:1;min-width:0}
+  .pc-txt{font-size:14px;font-weight:600;line-height:1.3}
+  .pc-item.feito .pc-txt{text-decoration:line-through;color:var(--cinza);font-weight:500}
+  .pc-data{font-size:11.5px;margin-top:3px;color:var(--cinza)}
+  .pc-data.hoje{color:var(--dourado);font-weight:700}
+  .pc-data.atrasado{color:var(--alerta);font-weight:700}
+  .pc-acao{border:none;background:none;font-size:15px;padding:3px;cursor:pointer;flex:none;color:var(--apagar)}
+  .pc-acao.lembrete{color:var(--cobalto)}
+  .pc-add{flex:none;padding:10px 12px 14px;border-top:1px solid var(--azulejo);background:var(--superficie)}
+  .pc-add input[type=text]{width:100%;border:1.5px solid var(--azulejo);border-radius:10px;
+    padding:11px 12px;font-size:14px;outline:none;background:var(--superficie);color:var(--tinta)}
+  .pc-add-linha{display:flex;gap:8px;margin-top:8px}
+  .pc-add-linha input[type=date]{flex:1;border:1.5px solid var(--azulejo);border-radius:10px;
+    padding:9px 10px;font-size:13.5px;outline:none;background:var(--superficie);color:var(--tinta)}
+  .pc-add-linha button{background:var(--cobalto);color:#fff;border:none;border-radius:10px;
+    padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
   .aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--tinta);color:#fff;
     padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:.3s;z-index:60}
   .aviso.mostra{opacity:1;bottom:34px}
@@ -264,6 +304,24 @@
     <button class="fechar" id="docsFechar">Fechar</button>
   </div>
 </div>
+
+<button class="edge-alca" id="edgeAlca" title="Checklist da viagem">✓ LISTA<span class="badge" id="edgeBadge" style="display:none">0</span></button>
+<div class="painel-veu" id="painelVeu"></div>
+<aside id="painelCheck" aria-label="Checklist da viagem">
+  <div class="pc-topo">
+    <h3>✅ Checklist da viagem</h3>
+    <div class="pc-prog"><i id="pcProg" style="width:0%"></i></div>
+    <div class="pc-sub" id="pcSub"></div>
+  </div>
+  <div class="pc-lista" id="pcLista"></div>
+  <div class="pc-add">
+    <input type="text" id="pcNovoTxt" placeholder="Novo item (ex.: comprar adaptador de tomada)" maxlength="80">
+    <div class="pc-add-linha">
+      <input type="date" id="pcNovaData" title="Prazo (opcional)">
+      <button id="pcAdd">＋ Add</button>
+    </div>
+  </div>
+</aside>
 
 <!-- Visor de documentos em tela cheia -->
 <div id="visor">
@@ -885,6 +943,121 @@ $('inpAnexo').addEventListener('change', e => {
   };
   leitor.readAsDataURL(f);
 });
+
+// ---------- Checklist de viagem (painel edge) ----------
+const CHAVE_CHECK = 'despesas-viagem:checklist';
+const hojeISO = () => new Date().toISOString().slice(0,10);
+function checklistInicial(){
+  return [
+    {id:1,  txt:'RSVP casamento + Welcome Drinks (Micheline)', data:null, feito:true},
+    {id:2,  txt:'Voo TAP MAD-LIS 07/09 (16.000 milhas + 40,50)', data:null, feito:true},
+    {id:3,  txt:'Voo Air Europa OPO-MAD 13/09 - executiva', data:null, feito:true},
+    {id:4,  txt:'Hotel The Lince Santa Clara (noite do casamento)', data:null, feito:true},
+    {id:5,  txt:'Hotel AVANI Lisboa (07-08/09)', data:null, feito:true},
+    {id:6,  txt:'Hotel NH Porto Batalha (09-11/09)', data:null, feito:true},
+    {id:7,  txt:'Carro Europcar: Mercedes A, Lisboa-Porto', data:null, feito:true},
+    {id:8,  txt:'Conferir validade do passaporte (dez/2026+)', data:'2026-08-22', feito:false},
+    {id:9,  txt:'PID no Detran-PE (URGENTE)', data:'2026-08-24', feito:false},
+    {id:10, txt:'Reservar Sobrino de Botin - 07/09 13h30 (botin.es)', data:'2026-08-24', feito:false},
+    {id:11, txt:'Decidir e reservar noite 12-13/09 (quinta Douro ou NH)', data:'2026-08-25', feito:false},
+    {id:12, txt:'Reservar NH Collection Madrid Gran Via (05-07/09)', data:'2026-08-26', feito:false},
+    {id:13, txt:'Reservar Hotel Fatima Center (08-09/09)', data:'2026-08-26', feito:false},
+    {id:14, txt:'Reservar Air Rooms T4 (13-14/09)', data:'2026-08-26', feito:false},
+    {id:15, txt:'Seguro-viagem Schengen (30 mil euros - documento de fronteira!)', data:'2026-08-26', feito:false},
+    {id:16, txt:'Trem Madrid-Toledo ida/volta (renfe.com)', data:'2026-08-28', feito:false},
+    {id:17, txt:'Reservar quinta do Douro: almoco + prova 12/09', data:'2026-08-28', feito:false},
+    {id:18, txt:'Reservar jantar Ribeira 10/09 (Terra Nova ou Ribeira Square)', data:'2026-09-01', feito:false},
+    {id:19, txt:'eSIM Europa (Airalo/Saily/Holafly) nos 2 celulares', data:'2026-09-01', feito:false},
+    {id:20, txt:'Ingressos: Prado, Reina Sofia, Jeronimos, Lello', data:'2026-09-01', feito:false},
+    {id:21, txt:'Avisar banco/cartoes do uso internacional', data:'2026-09-01', feito:false},
+    {id:22, txt:'Comprar euros em especie (~300-400)', data:'2026-09-02', feito:false},
+    {id:23, txt:'Baixar mapas offline (Google Maps: Portugal + Madrid)', data:'2026-09-03', feito:false},
+    {id:24, txt:'Malas: tons claros (09/09) + Passeio Completo (11/09) + casaco', data:'2026-09-03', feito:false},
+  ];
+}
+const lerCheck = () => { try { const v = JSON.parse(localStorage.getItem(CHAVE_CHECK)); return Array.isArray(v)&&v.length ? v : null; } catch(e){ return null; } };
+let itensCheck = lerCheck();
+if(!itensCheck){ itensCheck = checklistInicial(); localStorage.setItem(CHAVE_CHECK, JSON.stringify(itensCheck)); }
+const salvarCheck = () => localStorage.setItem(CHAVE_CHECK, JSON.stringify(itensCheck));
+
+const pendenciasUrgentes = () => itensCheck.filter(i => !i.feito && i.data && i.data <= hojeISO()).length;
+function renderBadge(){
+  const n = pendenciasUrgentes();
+  const b = $('edgeBadge');
+  b.style.display = n ? 'flex' : 'none';
+  b.textContent = n;
+}
+const fmtDataBR = iso => { const p = iso.split('-'); return p[2] + '/' + p[1]; };
+
+function renderCheck(){
+  const h = hojeISO();
+  const feitos = itensCheck.filter(i => i.feito).length;
+  $('pcProg').style.width = (itensCheck.length ? feitos/itensCheck.length*100 : 0) + '%';
+  $('pcSub').textContent = feitos + ' de ' + itensCheck.length + ' concluidos';
+  const ordem = [...itensCheck].sort((a,b) => (a.feito - b.feito) || ((a.data||'9999') > (b.data||'9999') ? 1 : -1));
+  $('pcLista').innerHTML = ordem.map(i => {
+    let cls = '', rot = '';
+    if(i.data && !i.feito){
+      if(i.data < h){ cls = 'atrasado'; rot = 'venceu ' + fmtDataBR(i.data); }
+      else if(i.data === h){ cls = 'hoje'; rot = 'HOJE'; }
+      else rot = 'ate ' + fmtDataBR(i.data);
+    }
+    return '<div class="pc-item ' + (i.feito?'feito':'') + '" data-pc="' + i.id + '">' +
+      '<div class="pc-caixa">' + (i.feito ? '&#10003;' : '') + '</div>' +
+      '<div class="pc-info"><div class="pc-txt">' + i.txt + '</div>' +
+      (rot ? '<div class="pc-data ' + cls + '">' + rot + '</div>' : '') + '</div>' +
+      (i.data && !i.feito ? '<button class="pc-acao lembrete" data-ics="' + i.id + '" title="Alarme na agenda">&#9200;</button>' : '') +
+      '<button class="pc-acao" data-pcdel="' + i.id + '" title="Excluir">&#10005;</button></div>';
+  }).join('');
+  document.querySelectorAll('.pc-item .pc-caixa').forEach(cx => cx.onclick = () => {
+    const it = itensCheck.find(x => x.id == cx.parentElement.dataset.pc);
+    it.feito = !it.feito; salvarCheck(); renderCheck();
+  });
+  document.querySelectorAll('[data-pcdel]').forEach(btn => btn.onclick = () => {
+    if(!confirm('Excluir este item?')) return;
+    itensCheck = itensCheck.filter(x => x.id != btn.dataset.pcdel);
+    salvarCheck(); renderCheck();
+  });
+  document.querySelectorAll('[data-ics]').forEach(btn => btn.onclick = () => {
+    baixarICS(itensCheck.find(x => x.id == btn.dataset.ics));
+  });
+  renderBadge();
+}
+function baixarICS(it){
+  const d = it.data.replace(/-/g,'');
+  const titulo = it.txt.replace(/[,;]/g,' ');
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//DespesasViagem//PT','BEGIN:VEVENT',
+    'UID:viagem-' + it.id + '@despesas','DTSTART;VALUE=DATE:' + d,
+    'SUMMARY:Viagem: ' + titulo,
+    'BEGIN:VALARM','TRIGGER:PT9H','ACTION:DISPLAY','DESCRIPTION:' + titulo,'END:VALARM',
+    'END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], {type:'text/calendar'}));
+  a.download = 'lembrete-viagem.ics';
+  a.click();
+  avisar('Abra o arquivo baixado para criar o alarme na agenda');
+}
+function abrirPainel(){
+  $('painelVeu').classList.add('aberto');
+  $('painelCheck').classList.add('aberto');
+  renderCheck();
+  empilharVoltar(() => { $('painelVeu').classList.remove('aberto'); $('painelCheck').classList.remove('aberto'); });
+}
+$('edgeAlca').onclick = abrirPainel;
+$('painelVeu').onclick = fecharTopo;
+$('pcAdd').onclick = () => {
+  const txt = $('pcNovoTxt').value.trim();
+  if(!txt){ avisar('Escreva o item'); return; }
+  itensCheck.push({id: Date.now(), txt, data: $('pcNovaData').value || null, feito: false});
+  salvarCheck();
+  $('pcNovoTxt').value = ''; $('pcNovaData').value = '';
+  renderCheck(); avisar('Item adicionado');
+};
+renderBadge();
+setTimeout(() => {
+  const n = pendenciasUrgentes();
+  if(n) avisar(n + (n>1?' itens do checklist vencem':' item do checklist vence') + ' hoje ou ja venceu - toque na alca LISTA');
+}, 1200);
 
 let avisoTimer;
 function avisar(msg){
