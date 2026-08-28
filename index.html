@@ -107,7 +107,7 @@
   /* ---------- Modal ---------- */
   .veu{position:fixed;inset:0;background:rgba(22,42,64,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
   .veu.aberto{display:flex}
-  .modal{background:var(--superficie);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 18px 26px}
+  .modal{background:var(--superficie);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 18px 26px;max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .modal h3{font-size:18px;margin-bottom:14px;color:var(--cobalto)}
   .modal label{display:block;font-size:12.5px;font-weight:700;color:var(--cinza);margin:12px 2px 5px}
   .modal input{width:100%;border:1.5px solid var(--azulejo);border-radius:10px;padding:12px;font-size:15px;outline:none;background:var(--superficie);color:var(--tinta)}
@@ -299,7 +299,7 @@
       <label class="btn-anexar" for="inpAnexo">＋ Anexar documento (voucher, passaporte, CNH...)</label>
       <input id="inpAnexo" type="file" accept="application/pdf,image/*" style="display:none">
       <button class="fechar" id="btnPin" style="color:var(--cobalto);font-weight:700">🔒 Proteger anexos com PIN (recomendado)</button>
-      <div class="doc-aviso">Anexos ficam só neste celular — nada é enviado à internet. Limite: 1,5 MB por arquivo.</div>
+      <div class="doc-aviso">Anexos ficam só neste celular — nada é enviado à internet. Até 10 MB por arquivo, dezenas de MB no total.</div>
     </div>
     <button class="fechar" id="docsFechar">Fechar</button>
   </div>
@@ -701,6 +701,55 @@ const lerDocs = () => { try { return JSON.parse(localStorage.getItem(CHAVE_DOCS)
 const salvarDocs = docs => { localStorage.setItem(CHAVE_DOCS, JSON.stringify(docs)); };
 const pinAtivo = () => !!localStorage.getItem(CHAVE_SALT);
 
+// IndexedDB: conteúdo dos anexos (dezenas de MB, fora do limite do localStorage)
+let bdDocs = null;
+function idb(){
+  return new Promise((res, rej) => {
+    if(bdDocs) return res(bdDocs);
+    const req = indexedDB.open('despesas-viagem-docs', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('conteudo', {keyPath:'id'});
+    req.onsuccess = () => { bdDocs = req.result; res(bdDocs); };
+    req.onerror = () => rej(req.error);
+  });
+}
+const idbOp = (modo, fn) => idb().then(bd => new Promise((res, rej) => {
+  const tx = bd.transaction('conteudo', modo);
+  const r = fn(tx.objectStore('conteudo'));
+  tx.oncomplete = () => res(r && r.result);
+  tx.onerror = () => rej(tx.error);
+}));
+const docConteudoSalvar = rec => idbOp('readwrite', st => st.put(rec));
+const docConteudoPegar  = id  => idbOp('readonly',  st => st.get(id));
+const docConteudoApagar = id  => idbOp('readwrite', st => st.delete(id));
+const docConteudoLimpar = ()  => idbOp('readwrite', st => st.clear());
+
+async function cifrarBytes(bytes, chave){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const buf = await crypto.subtle.encrypt({name:'AES-GCM', iv}, chave, bytes);
+  return {iv: b64(iv), buf};
+}
+
+// migração automática: anexos antigos saem do localStorage para o IndexedDB
+(async function migrarDocs(){
+  try{
+    const docs = lerDocs();
+    let mudou = false;
+    for(const d of docs){
+      if(d.dados){
+        const bin = atob(d.dados.split(',')[1]);
+        const arr = new Uint8Array(bin.length);
+        for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        await docConteudoSalvar({id: d.id, plano: new Blob([arr], {type: d.tipo})});
+        delete d.dados; d.cif = false; mudou = true;
+      } else if(typeof d.cif === 'string'){
+        await docConteudoSalvar({id: d.id, iv: d.iv, cifBuf: deB64(d.cif).buffer, legado: true});
+        delete d.cif; delete d.iv; d.cif = true; mudou = true;
+      }
+    }
+    if(mudou) salvarDocs(docs);
+  }catch(e){}
+})();
+
 // base64 em blocos (arquivos grandes estouram a pilha com spread)
 const b64 = a => { const u = new Uint8Array(a); let s = '';
   for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
@@ -760,6 +809,7 @@ $('btnDestravar').onclick = async () => {
 $('btnEsqueciPin').onclick = () => {
   if(!confirm('Sem o PIN não há como recuperar os anexos protegidos.\nApagar TODOS os anexos e remover o PIN?')) return;
   localStorage.removeItem(CHAVE_DOCS); localStorage.removeItem(CHAVE_SALT); localStorage.removeItem(CHAVE_VERIF);
+  docConteudoLimpar();
   chaveSessao = null; mostrarTrava(false); renderDocs(); avisar('Anexos e PIN removidos');
 };
 
@@ -774,10 +824,16 @@ $('btnPin').onclick = async () => {
   const chave = await derivarChave(pin, salt);
   localStorage.setItem(CHAVE_SALT, b64(salt));
   localStorage.setItem(CHAVE_VERIF, JSON.stringify(await cifrar('ok', chave)));
-  // criptografa anexos que já existiam
+  // criptografa anexos que já existiam (conteúdo no IndexedDB)
   const docs = lerDocs();
   for(const d of docs){
-    if(d.dados){ const c = await cifrar(d.dados, chave); d.iv = c.iv; d.cif = c.cif; delete d.dados; }
+    const rec = await docConteudoPegar(d.id);
+    if(rec && rec.plano){
+      const bytes = new Uint8Array(await rec.plano.arrayBuffer());
+      const c = await cifrarBytes(bytes, chave);
+      await docConteudoSalvar({id: d.id, iv: c.iv, cifBuf: c.buf});
+      d.cif = true;
+    }
   }
   salvarDocs(docs);
   chaveSessao = chave;
@@ -843,16 +899,26 @@ async function mostrarNoVisor(nome, bytes, tipo){
 }
 
 async function abrirDocumento(doc){
-  let dataURL = doc.dados;
-  if(doc.cif){
+  const rec = await docConteudoPegar(doc.id);
+  if(!rec){ avisar('Conteúdo do anexo não encontrado'); return; }
+  let bytes;
+  if(rec.plano){
+    bytes = new Uint8Array(await rec.plano.arrayBuffer());
+  } else {
     if(!chaveSessao){ avisar('Destrave os anexos no 📄 primeiro (PIN)'); return; }
-    try{ dataURL = await decifrar(doc, chaveSessao); }
-    catch(e){ avisar('Falha ao decifrar o documento'); return; }
+    try{
+      const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv: deB64(rec.iv)}, chaveSessao, rec.cifBuf);
+      if(rec.legado){
+        const dataURL = new TextDecoder().decode(buf);
+        const bin = atob(dataURL.split(',')[1]);
+        bytes = new Uint8Array(bin.length);
+        for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      } else {
+        bytes = new Uint8Array(buf);
+      }
+    }catch(e){ avisar('Falha ao decifrar o documento'); return; }
   }
-  const bin = atob(dataURL.split(',')[1]);
-  const arr = new Uint8Array(bin.length);
-  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  mostrarNoVisor(doc.nome, arr, doc.tipo);
+  mostrarNoVisor(doc.nome, bytes, doc.tipo);
 }
 
 function abrirVinculo(idDespesa){
@@ -912,36 +978,35 @@ function renderDocs(){
   document.querySelectorAll('[data-del]').forEach(btn => {
     btn.onclick = () => {
       if(!confirm('Apagar este anexo?')) return;
+      docConteudoApagar(Number(btn.dataset.del));
       salvarDocs(lerDocs().filter(d => d.id != btn.dataset.del));
       renderDocs(); avisar('Anexo apagado');
     };
   });
 }
 
-$('inpAnexo').addEventListener('change', e => {
+$('inpAnexo').addEventListener('change', async e => {
   const f = e.target.files[0];
   if(!f) return;
-  if(f.size > 1.5 * 1024 * 1024){ avisar('Arquivo grande demais (máx. 1,5 MB)'); e.target.value=''; return; }
-  const leitor = new FileReader();
-  leitor.onload = async () => {
-    try{
-      const docs = lerDocs();
-      const novo = { id: Date.now(), nome: f.name, tipo: f.type || 'application/octet-stream',
-                     tam: (f.size/1024).toFixed(0) + ' KB' };
-      if(pinAtivo()){
-        if(!chaveSessao){ avisar('Destrave com o PIN antes de anexar'); e.target.value=''; return; }
-        const c = await cifrar(leitor.result, chaveSessao);
-        novo.iv = c.iv; novo.cif = c.cif;
-      } else {
-        novo.dados = leitor.result;
-      }
-      docs.push(novo);
-      salvarDocs(docs);
-      renderDocs(); avisar('Documento anexado ✓');
-    }catch(err){ avisar('Sem espaço — apague anexos antigos'); }
-    e.target.value = '';
-  };
-  leitor.readAsDataURL(f);
+  if(f.size > 10 * 1024 * 1024){ avisar('Arquivo grande demais (máx. 10 MB)'); e.target.value=''; return; }
+  try{
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const id = Date.now();
+    if(pinAtivo()){
+      if(!chaveSessao){ avisar('Destrave com o PIN antes de anexar'); e.target.value=''; return; }
+      const c = await cifrarBytes(bytes, chaveSessao);
+      await docConteudoSalvar({id, iv: c.iv, cifBuf: c.buf});
+    } else {
+      await docConteudoSalvar({id, plano: new Blob([bytes], {type: f.type || 'application/octet-stream'})});
+    }
+    const docs = lerDocs();
+    docs.push({id, nome: f.name, tipo: f.type || 'application/octet-stream',
+               tam: f.size > 999*1024 ? (f.size/1048576).toFixed(1) + ' MB' : (f.size/1024).toFixed(0) + ' KB',
+               cif: pinAtivo()});
+    salvarDocs(docs);
+    renderDocs(); avisar('Documento anexado ✓');
+  }catch(err){ avisar('Não consegui anexar — tente de novo'); }
+  e.target.value = '';
 });
 
 // ---------- Checklist de viagem (painel edge) ----------
