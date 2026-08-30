@@ -118,6 +118,19 @@
   .modal .zona-perigo button{width:100%;background:none;border:1.5px solid #F1D3CE;color:var(--alerta);
     border-radius:10px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer}
 
+.pasta-linha{display:flex;align-items:center;gap:11px;padding:12px;margin-bottom:8px;border-radius:12px;
+    background:var(--superficie);box-shadow:var(--sombra);cursor:pointer}
+  .pasta-ico{width:38px;height:38px;border-radius:10px;background:var(--azulejo);display:flex;
+    align-items:center;justify-content:center;font-size:18px;flex:none}
+  .pasta-nome{flex:1;font-size:14.5px;font-weight:700}
+  .pasta-cont{font-size:12px;color:var(--cinza);flex:none}
+  .grade-fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+  .mini{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--azulejo);cursor:pointer}
+  .mini img{width:100%;height:100%;object-fit:cover;display:block}
+  .mini .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;
+    border-radius:999px;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:1}
+  .voltar-pastas{background:none;border:none;color:var(--cobalto);font-weight:700;font-size:13.5px;
+    cursor:pointer;padding:4px 0 10px}
   .doc-linha{display:flex;align-items:center;gap:11px;padding:12px 4px;border-bottom:1px solid var(--azulejo);cursor:pointer}
   .doc-fixo{background:var(--azulejo);border-radius:12px;padding:12px;border-bottom:none;margin-bottom:6px}
   .doc-ico{width:38px;height:38px;border-radius:10px;background:var(--superficie);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
@@ -211,6 +224,7 @@
 <header>
   <div class="topo">
     <select id="selViagem" aria-label="Escolher viagem"></select>
+    <button class="btn-icone" id="btnFotos" title="Fotos da viagem">📷</button>
     <button class="btn-icone" id="btnDocs" title="Documentos da viagem">📄</button>
     <button class="btn-icone" id="btnConfig" title="Ajustes da viagem">⚙</button>
     <button class="btn-icone" id="btnNova" title="Nova viagem">＋</button>
@@ -268,10 +282,29 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 25 · fotos, documentos e checklist</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal: fotos por pasta -->
+<div class="veu" id="veuFotos">
+  <div class="modal">
+    <h3 id="fotosTitulo">📷 Fotos da viagem</h3>
+    <div id="fotosPastas"></div>
+    <div id="fotosGrade" style="display:none"></div>
+    <label class="btn-anexar" for="inpFoto" id="btnAddFoto" style="display:none">＋ Adicionar fotos</label>
+    <input id="inpFoto" type="file" accept="image/*" multiple style="display:none">
+    <div class="pc-add-linha" id="linhaNovaPasta" style="margin-top:12px">
+      <input type="text" id="novaPastaNome" placeholder="Nova pasta (ex.: Segóvia)" maxlength="30"
+             style="flex:1;border:1.5px solid var(--azulejo);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;background:var(--superficie);color:var(--tinta)">
+      <button id="btnNovaPasta">＋ Pasta</button>
+    </div>
+    <div class="doc-aviso" id="fotosAviso">As fotos ficam só neste celular. São comprimidas ao salvar para caber muitas.</div>
+    <button class="fechar" id="fotosFechar">Fechar</button>
   </div>
 </div>
 
@@ -537,8 +570,18 @@ function renderTudo(){
     document.querySelectorAll('.apagar').forEach(btn => btn.onclick = async ev => {
       ev.stopPropagation();
       const vg = viagem();
+      const alvo = vg.despesas.find(d => d.id == btn.dataset.id);
+      if(!alvo) return;
+      const rotulo = (alvo.desc || '') + ' ' + fmt(alvo.valor, vg.moeda);
+      if(!confirm('Apagar este lançamento?\n\n' + rotulo)) return;
+      const backup = JSON.parse(JSON.stringify(alvo));
       vg.despesas = vg.despesas.filter(d => d.id != btn.dataset.id);
-      await gravar(); renderTudo(); avisar('Lançamento apagado');
+      await gravar(); renderTudo();
+      avisarDesfazer('Lançamento apagado', async () => {
+        const v2 = viagem();
+        v2.despesas.push(backup);
+        await gravar(); renderTudo(); avisar('Lançamento restaurado ✓');
+      });
     });
     document.querySelectorAll('.vincular').forEach(btn => btn.onclick = ev => {
       ev.stopPropagation();
@@ -1159,7 +1202,142 @@ setTimeout(() => {
   if(n) avisar(n + (n>1?' itens do checklist vencem':' item do checklist vence') + ' hoje ou ja venceu - toque na alca LISTA');
 }, 1200);
 
+// ---------- Galeria de fotos por pasta ----------
+const CHAVE_FOTOS = 'despesas-viagem:fotos';
+const PASTAS_INICIAIS = ['Madrid','Toledo','Lisboa','Fátima','Porto','Vila do Conde','Casamento','Douro'];
+function lerFotos(){ try{ const v=JSON.parse(localStorage.getItem(CHAVE_FOTOS)); return v && v.pastas ? v : {pastas: PASTAS_INICIAIS.slice(), itens: []}; }catch(e){ return {pastas: PASTAS_INICIAIS.slice(), itens: []}; } }
+function salvarFotos(f){ localStorage.setItem(CHAVE_FOTOS, JSON.stringify(f)); }
+let pastaAberta = null;
+
+async function comprimir(file, maxLado, qualidade){
+  const bmp = await createImageBitmap(file);
+  const escala = Math.min(1, maxLado / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(bmp.width * escala);
+  cv.height = Math.round(bmp.height * escala);
+  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  bmp.close && bmp.close();
+  return await new Promise(r => cv.toBlob(r, 'image/jpeg', qualidade));
+}
+
+function renderPastas(){
+  const f = lerFotos();
+  pastaAberta = null;
+  $('fotosTitulo').textContent = '📷 Fotos da viagem';
+  $('fotosGrade').style.display = 'none';
+  $('btnAddFoto').style.display = 'none';
+  $('linhaNovaPasta').style.display = 'flex';
+  $('fotosAviso').style.display = 'block';
+  $('fotosPastas').style.display = 'block';
+  $('fotosPastas').innerHTML = f.pastas.map(p => {
+    const n = f.itens.filter(i => i.pasta === p).length;
+    return `<div class="pasta-linha" data-pasta="${p}">
+      <div class="pasta-ico">${n ? '🖼️' : '📁'}</div>
+      <div class="pasta-nome">${p}</div>
+      <div class="pasta-cont">${n ? n + (n>1?' fotos':' foto') : 'vazia'}</div>
+      <button class="pc-acao" data-pastadel="${p}" title="Excluir pasta">✕</button>
+    </div>`;
+  }).join('') || '<div class="vazio">Nenhuma pasta ainda.</div>';
+  document.querySelectorAll('[data-pasta]').forEach(el => el.onclick = ev => {
+    if(ev.target.dataset.pastadel) return;
+    abrirPasta(el.dataset.pasta);
+  });
+  document.querySelectorAll('[data-pastadel]').forEach(b => b.onclick = async ev => {
+    ev.stopPropagation();
+    const p = b.dataset.pastadel;
+    const ff = lerFotos();
+    const dentro = ff.itens.filter(i => i.pasta === p);
+    if(!confirm(dentro.length ? `Excluir a pasta "${p}" e suas ${dentro.length} foto(s)?` : `Excluir a pasta "${p}"?`)) return;
+    for(const i of dentro){ await docConteudoApagar(i.id); await docConteudoApagar(i.id + 1); }
+    ff.itens = ff.itens.filter(i => i.pasta !== p);
+    ff.pastas = ff.pastas.filter(x => x !== p);
+    salvarFotos(ff); renderPastas(); avisar('Pasta excluída');
+  });
+}
+
+async function abrirPasta(nome){
+  pastaAberta = nome;
+  const f = lerFotos();
+  const itens = f.itens.filter(i => i.pasta === nome);
+  $('fotosTitulo').textContent = '📷 ' + nome;
+  $('fotosPastas').style.display = 'none';
+  $('linhaNovaPasta').style.display = 'none';
+  $('fotosAviso').style.display = 'none';
+  $('btnAddFoto').style.display = 'block';
+  const g = $('fotosGrade');
+  g.style.display = 'block';
+  g.innerHTML = '<button class="voltar-pastas" id="voltarPastas">‹ Todas as pastas</button>' +
+    (itens.length ? '<div class="grade-fotos" id="gradeInner"></div>' : '<div class="vazio">Nenhuma foto nesta pasta ainda.</div>');
+  $('voltarPastas').onclick = renderPastas;
+  const inner = $('gradeInner');
+  if(!inner) return;
+  for(const it of itens){
+    const rec = await docConteudoPegar(it.id + 1); // miniatura
+    const div = document.createElement('div');
+    div.className = 'mini';
+    const img = document.createElement('img');
+    if(rec && rec.plano) img.src = URL.createObjectURL(rec.plano);
+    div.appendChild(img);
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '✕';
+    x.onclick = async ev => {
+      ev.stopPropagation();
+      if(!confirm('Apagar esta foto?')) return;
+      await docConteudoApagar(it.id); await docConteudoApagar(it.id + 1);
+      const ff = lerFotos(); ff.itens = ff.itens.filter(z => z.id !== it.id); salvarFotos(ff);
+      abrirPasta(nome); avisar('Foto apagada');
+    };
+    div.appendChild(x);
+    div.onclick = async ev => {
+      if(ev.target === x) return;
+      const full = await docConteudoPegar(it.id);
+      if(full && full.plano) mostrarNoVisor(it.nome, new Uint8Array(await full.plano.arrayBuffer()), 'image/jpeg');
+    };
+    inner.appendChild(div);
+  }
+}
+
+$('btnFotos').onclick = () => { renderPastas(); $('veuFotos').classList.add('aberto'); empilharVoltar(() => $('veuFotos').classList.remove('aberto')); };
+$('fotosFechar').onclick = fecharTopo;
+$('btnNovaPasta').onclick = () => {
+  const nome = $('novaPastaNome').value.trim();
+  if(!nome){ avisar('Escreva o nome da pasta'); return; }
+  const f = lerFotos();
+  if(f.pastas.includes(nome)){ avisar('Já existe uma pasta com esse nome'); return; }
+  f.pastas.push(nome); salvarFotos(f);
+  $('novaPastaNome').value = '';
+  renderPastas(); avisar('Pasta criada ✓');
+};
+$('inpFoto').addEventListener('change', async e => {
+  const arqs = [...e.target.files];
+  if(!arqs.length || !pastaAberta) return;
+  avisar('Salvando ' + arqs.length + ' foto(s)…');
+  const f = lerFotos();
+  for(const arq of arqs){
+    try{
+      const id = Date.now() + Math.floor(Math.random()*1000)*2;
+      const grande = await comprimir(arq, 1600, 0.82);
+      const mini = await comprimir(arq, 320, 0.7);
+      await docConteudoSalvar({id, plano: grande});
+      await docConteudoSalvar({id: id + 1, plano: mini});
+      f.itens.push({id, pasta: pastaAberta, nome: arq.name, data: new Date().toISOString().slice(0,10)});
+    }catch(err){ avisar('Uma foto não pôde ser salva'); }
+  }
+  salvarFotos(f);
+  e.target.value = '';
+  abrirPasta(pastaAberta);
+  avisar('Fotos adicionadas ✓');
+});
+
 let avisoTimer;
+function avisarDesfazer(msg, aoDesfazer){
+  const el = $('aviso');
+  clearTimeout(avisoTimer);
+  el.innerHTML = msg + ' <button id="btnDesfazer" style="margin-left:10px;background:#fff;color:var(--tinta);border:none;border-radius:8px;padding:5px 11px;font-size:13px;font-weight:700;cursor:pointer">DESFAZER</button>';
+  el.classList.add('visivel');
+  $('btnDesfazer').onclick = () => { clearTimeout(avisoTimer); el.classList.remove('visivel'); aoDesfazer(); };
+  avisoTimer = setTimeout(() => el.classList.remove('visivel'), 7000);
+}
 function avisar(msg){
   const el = $('aviso'); el.textContent = msg; el.classList.add('mostra');
   clearTimeout(avisoTimer); avisoTimer = setTimeout(()=>el.classList.remove('mostra'), 2200);
