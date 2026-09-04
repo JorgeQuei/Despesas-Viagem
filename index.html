@@ -282,7 +282,7 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
-    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 25 · fotos, documentos e checklist</div>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 26 · roteiro sempre atualizado</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
@@ -828,6 +828,15 @@ $('btnDocs').onclick = () => {
 };
 $('docsFechar').onclick = fecharTopo;
 async function abrirRoteiro(){
+  // 1) tenta a versão mais recente do servidor (fura cache); 2) offline: usa a guardada
+  try{
+    const resp = await fetch('planejamento.pdf?v=' + Date.now(), {cache: 'no-store'});
+    if(!resp.ok) throw 0;
+    const buf = await resp.arrayBuffer();
+    try{ const c = await caches.open('despesas-viagem-v5'); await c.put('planejamento.pdf', new Response(buf.slice(0), {headers:{'Content-Type':'application/pdf'}})); }catch(e){}
+    mostrarNoVisor('Planejamento da viagem', new Uint8Array(buf), 'application/pdf');
+    return;
+  }catch(e){}
   try{
     const resp = await fetch('planejamento.pdf');
     if(!resp.ok) throw 0;
