@@ -282,7 +282,7 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
-    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 26 · roteiro sempre atualizado</div>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 27 · documentos e fotos por viagem</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
@@ -659,8 +659,18 @@ $('mSalvar').onclick = async () => {
 };
 
 $('mExcluir').onclick = async () => {
-  if(!confirm('Excluir esta viagem e todos os seus lançamentos? Não dá para desfazer.')) return;
-  dados.viagens = dados.viagens.filter(v => v.id !== dados.ativa);
+  if(!confirm('Excluir esta viagem com seus lançamentos, documentos e fotos? Não dá para desfazer.')) return;
+  const idRemovida = dados.ativa;
+  // apaga tambem os conteudos (IndexedDB) dos anexos e fotos desta viagem
+  try{
+    const docsV = JSON.parse(localStorage.getItem(CHAVE_DOCS_DE(idRemovida))) || [];
+    for(const d of docsV){ await docConteudoApagar(d.id); }
+    const fotosV = JSON.parse(localStorage.getItem(CHAVE_FOTOS_DE(idRemovida)));
+    if(fotosV && fotosV.itens){ for(const i of fotosV.itens){ await docConteudoApagar(i.id); await docConteudoApagar(i.id+1); } }
+  }catch(e){}
+  localStorage.removeItem(CHAVE_DOCS_DE(idRemovida));
+  localStorage.removeItem(CHAVE_FOTOS_DE(idRemovida));
+  dados.viagens = dados.viagens.filter(v => v.id !== idRemovida);
   dados.ativa = dados.viagens[0].id;
   await gravar(); fecharTopo(); renderTudo(); avisar('Viagem excluída');
 };
@@ -735,13 +745,26 @@ function abrirCategoria(catId){
 $('catFechar').onclick = fecharTopo;
 
 // ---------- Documentos da viagem (com proteção opcional por PIN / AES-256) ----------
-const CHAVE_DOCS = 'despesas-viagem:docs';
+const CHAVE_DOCS_BASE = 'despesas-viagem:docs';
+const idViagemAtual = () => (dados && dados.ativa) ? dados.ativa : 'ib2026';
+const CHAVE_DOCS_DE = id => CHAVE_DOCS_BASE + ':' + id;
+// migração: anexos antigos (chave única) passam a pertencer à primeira viagem
+(function migrarDocsPorViagem(){
+  try{
+    const antigo = localStorage.getItem(CHAVE_DOCS_BASE);
+    if(antigo !== null){
+      const destino = CHAVE_DOCS_DE('ib2026');
+      if(localStorage.getItem(destino) === null) localStorage.setItem(destino, antigo);
+      localStorage.removeItem(CHAVE_DOCS_BASE);
+    }
+  }catch(e){}
+})();
 const CHAVE_SALT = 'despesas-viagem:docs-salt';
 const CHAVE_VERIF = 'despesas-viagem:docs-verif';
 let chaveSessao = null; // chave AES fica só na memória, some ao fechar o app
 
-const lerDocs = () => { try { return JSON.parse(localStorage.getItem(CHAVE_DOCS)) || []; } catch(e){ return []; } };
-const salvarDocs = docs => { localStorage.setItem(CHAVE_DOCS, JSON.stringify(docs)); };
+const lerDocs = () => { try { return JSON.parse(localStorage.getItem(CHAVE_DOCS_DE(idViagemAtual()))) || []; } catch(e){ return []; } };
+const salvarDocs = docs => { localStorage.setItem(CHAVE_DOCS_DE(idViagemAtual()), JSON.stringify(docs)); };
 const pinAtivo = () => !!localStorage.getItem(CHAVE_SALT);
 
 // IndexedDB: conteúdo dos anexos (dezenas de MB, fora do limite do localStorage)
@@ -860,7 +883,7 @@ $('btnDestravar').onclick = async () => {
 
 $('btnEsqueciPin').onclick = () => {
   if(!confirm('Sem o PIN não há como recuperar os anexos protegidos.\nApagar TODOS os anexos e remover o PIN?')) return;
-  localStorage.removeItem(CHAVE_DOCS); localStorage.removeItem(CHAVE_SALT); localStorage.removeItem(CHAVE_VERIF);
+  localStorage.removeItem(CHAVE_DOCS_DE(idViagemAtual())); localStorage.removeItem(CHAVE_SALT); localStorage.removeItem(CHAVE_VERIF);
   docConteudoLimpar();
   chaveSessao = null; mostrarTrava(false); renderDocs(); avisar('Anexos e PIN removidos');
 };
@@ -1212,10 +1235,21 @@ setTimeout(() => {
 }, 1200);
 
 // ---------- Galeria de fotos por pasta ----------
-const CHAVE_FOTOS = 'despesas-viagem:fotos';
+const CHAVE_FOTOS_BASE = 'despesas-viagem:fotos';
+const CHAVE_FOTOS_DE = id => CHAVE_FOTOS_BASE + ':' + id;
+(function migrarFotosPorViagem(){
+  try{
+    const antigo = localStorage.getItem(CHAVE_FOTOS_BASE);
+    if(antigo !== null){
+      const destino = CHAVE_FOTOS_DE('ib2026');
+      if(localStorage.getItem(destino) === null) localStorage.setItem(destino, antigo);
+      localStorage.removeItem(CHAVE_FOTOS_BASE);
+    }
+  }catch(e){}
+})();
 const PASTAS_INICIAIS = ['Madrid','Toledo','Lisboa','Fátima','Porto','Vila do Conde','Casamento','Douro'];
-function lerFotos(){ try{ const v=JSON.parse(localStorage.getItem(CHAVE_FOTOS)); return v && v.pastas ? v : {pastas: PASTAS_INICIAIS.slice(), itens: []}; }catch(e){ return {pastas: PASTAS_INICIAIS.slice(), itens: []}; } }
-function salvarFotos(f){ localStorage.setItem(CHAVE_FOTOS, JSON.stringify(f)); }
+function lerFotos(){ try{ const v=JSON.parse(localStorage.getItem(CHAVE_FOTOS_DE(idViagemAtual()))); return v && v.pastas ? v : {pastas: [], itens: []}; }catch(e){ return {pastas: [], itens: []}; } }
+function salvarFotos(f){ localStorage.setItem(CHAVE_FOTOS_DE(idViagemAtual()), JSON.stringify(f)); }
 let pastaAberta = null;
 
 async function comprimir(file, maxLado, qualidade){
