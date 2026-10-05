@@ -282,7 +282,7 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
-    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 28 · tudo separado por viagem</div>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 29 · checklist com modelo de viagem</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
@@ -1126,6 +1126,34 @@ function checklistInicial(){
     {id:24, txt:'Malas: tons claros (09/09) + Passeio Completo (11/09) + casaco', data:'2026-09-03', feito:false},
   ];
 }
+function checklistChina(){
+  return [
+    {id:901, txt:'Rijksmuseum dom 11/10 09:00 - ingressos comprados', data:null, feito:true},
+    {id:902, txt:'Van Gogh Museum dom 11/10 ~14:00 - so online, esgota (URGENTE)', data:'2026-10-05', feito:false},
+    {id:903, txt:'Anne Frank Huis seg 12/10 - checar devolucoes em annefrank.org', data:'2026-10-06', feito:false},
+    {id:904, txt:'Queutur: confirmar hotel Amsterda 10,11,12/10 + late check-out dia 13', data:'2026-10-06', feito:false},
+    {id:905, txt:'Conferir passaporte e documentos de entrada (China e Hong Kong)', data:'2026-10-06', feito:false},
+    {id:906, txt:'Seguro-viagem contratado e impresso', data:'2026-10-06', feito:false},
+    {id:907, txt:'Receber e anexar os vouchers dos hoteis no app', data:'2026-10-07', feito:false},
+    {id:908, txt:'Reservar rijsttafel dom 11/10 19:30 (Blauw ou Tempo Doeloe)', data:'2026-10-07', feito:false},
+    {id:909, txt:'Reservar jantar seg 12/10 20:00 (Greetje)', data:'2026-10-07', feito:false},
+    {id:910, txt:'Canton Fair: registro de comprador / badge de entrada', data:'2026-10-07', feito:false},
+    {id:911, txt:'Cartoes de visita para a missao (levar quantidade boa)', data:'2026-10-07', feito:false},
+    {id:912, txt:'Instalar Alipay e WeChat Pay e vincular o cartao (fazer no Brasil)', data:'2026-10-07', feito:false},
+    {id:913, txt:'Avisar banco e cartoes sobre uso internacional', data:'2026-10-07', feito:false},
+    {id:914, txt:'Organizacao: confirmar traslado HK->Guangzhou 14/10 e Shenzhen->HK 21/10', data:'2026-10-08', feito:false},
+    {id:915, txt:'eSIM/VPN testados no Brasil (Google e WhatsApp sao bloqueados na China)', data:'2026-10-08', feito:false},
+    {id:916, txt:'Euros e yuan em especie', data:'2026-10-08', feito:false},
+    {id:917, txt:'Baixar mapas offline (Amsterda, Guangzhou, Shenzhen)', data:'2026-10-08', feito:false},
+    {id:918, txt:'Adaptadores de tomada: Europa tipo C, China tipo A/I', data:'2026-10-08', feito:false},
+    {id:919, txt:'Malas: traje social da missao + casaco (Amsterda ~12C, Guangzhou ~28C)', data:'2026-10-08', feito:false},
+    {id:920, txt:'Check-in online TAP (24h antes) - voo sex 09/10 22:25', data:'2026-10-08', feito:false},
+    {id:921, txt:'Chegar ao aeroporto do Recife as 19:25 (3h antes)', data:'2026-10-09', feito:false},
+    {id:922, txt:'Pacote Vodafone CHINA 15GB: SMS para 16910 (antes de 14/10)', data:'2026-10-13', feito:false},
+    {id:923, txt:'Cartao de chegada da China online (entre 11 e 14/10)', data:'2026-10-13', feito:false},
+    {id:924, txt:'Schiphol 13/10: confirmar ponto de encontro do grupo antes do KL 887', data:'2026-10-13', feito:false},
+  ];
+}
 function lerCheck(){
   const id = idViagemAtual();
   try{
@@ -1160,6 +1188,16 @@ function renderCheck(){
   $('pcProg').style.width = (itensCheck.length ? feitos/itensCheck.length*100 : 0) + '%';
   $('pcSub').textContent = feitos + ' de ' + itensCheck.length + ' concluidos';
   const ordem = [...itensCheck].sort((a,b) => (a.feito - b.feito) || ((a.data||'9999') > (b.data||'9999') ? 1 : -1));
+  if(!itensCheck.length){
+    $('pcLista').innerHTML = '<div class="vazio" style="padding:18px 6px">Nenhum item nesta viagem ainda.</div>' +
+      '<button class="btn-anexar" id="pcModelo" style="width:100%">＋ Usar modelo: Missão China 2026</button>';
+    $('pcModelo').onclick = () => {
+      itensCheck = checklistChina();
+      salvarCheck(); renderCheck(); avisar('Checklist da missão carregado ✓');
+    };
+    renderBadge();
+    return;
+  }
   $('pcLista').innerHTML = ordem.map(i => {
     let cls = '', rot = '';
     if(i.data && !i.feito){
