@@ -282,7 +282,7 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
-    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 27 · documentos e fotos por viagem</div>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 28 · tudo separado por viagem</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
@@ -621,7 +621,7 @@ $('btnSalvar').onclick = async () => {
   renderTudo(); avisar('Despesa salva ✓');
 };
 
-$('selViagem').onchange = async e => { dados.ativa = e.target.value; await gravar(); renderTudo(); };
+$('selViagem').onchange = async e => { dados.ativa = e.target.value; await gravar(); renderTudo(); try{ renderBadge(); }catch(err){} };
 
 // ---------- Modal nova viagem / ajustes ----------
 function abrirModal(editar){
@@ -1085,7 +1085,18 @@ $('inpAnexo').addEventListener('change', async e => {
 });
 
 // ---------- Checklist de viagem (painel edge) ----------
-const CHAVE_CHECK = 'despesas-viagem:checklist';
+const CHAVE_CHECK_BASE = 'despesas-viagem:checklist';
+const CHAVE_CHECK_DE = id => CHAVE_CHECK_BASE + ':' + id;
+(function migrarCheckPorViagem(){
+  try{
+    const antigo = localStorage.getItem(CHAVE_CHECK_BASE);
+    if(antigo !== null){
+      const destino = CHAVE_CHECK_DE('ib2026');
+      if(localStorage.getItem(destino) === null) localStorage.setItem(destino, antigo);
+      localStorage.removeItem(CHAVE_CHECK_BASE);
+    }
+  }catch(e){}
+})();
 const hojeISO = () => new Date().toISOString().slice(0,10);
 function checklistInicial(){
   return [
@@ -1115,13 +1126,26 @@ function checklistInicial(){
     {id:24, txt:'Malas: tons claros (09/09) + Passeio Completo (11/09) + casaco', data:'2026-09-03', feito:false},
   ];
 }
-const lerCheck = () => { try { const v = JSON.parse(localStorage.getItem(CHAVE_CHECK)); return Array.isArray(v)&&v.length ? v : null; } catch(e){ return null; } };
-let itensCheck = lerCheck();
-if(!itensCheck){ itensCheck = checklistInicial(); localStorage.setItem(CHAVE_CHECK, JSON.stringify(itensCheck)); }
-const salvarCheck = () => localStorage.setItem(CHAVE_CHECK, JSON.stringify(itensCheck));
+function lerCheck(){
+  const id = idViagemAtual();
+  try{
+    const v = JSON.parse(localStorage.getItem(CHAVE_CHECK_DE(id)));
+    if(Array.isArray(v)) return v;
+  }catch(e){}
+  // só a viagem original nasce com a lista pronta; viagens novas começam vazias
+  return id === 'ib2026' ? checklistInicial() : [];
+}
+let itensCheck = [];
+let checkDeViagem = null;
+function sincronizarCheck(){
+  const id = idViagemAtual();
+  if(checkDeViagem !== id){ itensCheck = lerCheck(); checkDeViagem = id; }
+}
+const salvarCheck = () => localStorage.setItem(CHAVE_CHECK_DE(idViagemAtual()), JSON.stringify(itensCheck));
 
 const pendenciasUrgentes = () => itensCheck.filter(i => !i.feito && i.data && i.data <= hojeISO()).length;
 function renderBadge(){
+  sincronizarCheck();
   const n = pendenciasUrgentes();
   const b = $('edgeBadge');
   b.style.display = n ? 'flex' : 'none';
@@ -1130,6 +1154,7 @@ function renderBadge(){
 const fmtDataBR = iso => { const p = iso.split('-'); return p[2] + '/' + p[1]; };
 
 function renderCheck(){
+  sincronizarCheck();
   const h = hojeISO();
   const feitos = itensCheck.filter(i => i.feito).length;
   $('pcProg').style.width = (itensCheck.length ? feitos/itensCheck.length*100 : 0) + '%';
