@@ -139,6 +139,17 @@
   .grade-fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
   .mini{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--azulejo);cursor:pointer}
   .mini img{width:100%;height:100%;object-fit:cover;display:block}
+  .mini .pdf{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:30px}
+  .mini .pdf small{font-size:10px;color:var(--cinza);padding:0 6px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+  .comp-botoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .comp-botoes .btn-anexar{margin-top:4px;padding:15px 6px;font-weight:700;font-size:14px}
+  .comp-vazio{font-size:13px;color:var(--cinza);text-align:center;padding:6px 4px 14px;line-height:1.5}
+  .comp-form{display:flex;gap:8px;margin-top:12px}
+  .comp-form .chip{flex:1;flex-direction:row;justify-content:center;min-height:auto;border-radius:999px;padding:9px 8px;font-size:12.5px;font-weight:700;gap:6px;cursor:pointer;border-style:dashed;border-color:var(--cobalto);color:var(--cobalto);white-space:nowrap}
+  .comp-pendente{font-size:12.5px;color:var(--cobalto);font-weight:700;margin-top:8px;text-align:center}
+  .comp-pendente:empty{display:none}
+  .comp-pendente button{background:none;border:none;color:var(--alerta);font-weight:700;font-size:12.5px;text-decoration:underline;cursor:pointer;margin-left:6px}
+  .vinc-doc-link{width:100%;background:none;border:none;color:var(--cobalto);font-size:13px;font-weight:700;padding:14px 4px 4px;cursor:pointer;text-decoration:underline}
   .mini .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;
     border-radius:999px;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:1}
   .voltar-pastas{background:none;border:none;color:var(--cobalto);font-weight:700;font-size:13.5px;
@@ -218,6 +229,7 @@
   .aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--tinta);color:#fff;
     padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:.3s;z-index:60}
   .aviso.mostra{opacity:1;bottom:34px}
+  .aviso.visivel{opacity:1;bottom:34px;pointer-events:auto}
   .carregando{text-align:center;padding:60px 20px;color:var(--cinza)}
   :root[data-tema="escuro"]{
       --porcelana:#0E1621; --superficie:#182432; --superficie-2:#141F2C; --azulejo:#28394E;
@@ -265,6 +277,13 @@
       <input id="inpData" type="date">
     </div>
     <div class="chips chips-pgto" id="chipsPgto" aria-label="Forma de pagamento"></div>
+    <div class="comp-form">
+      <label class="chip" for="inpFormCam">📷 Foto do cupom</label>
+      <label class="chip" for="inpFormArq">🖼️ Galeria / PDF</label>
+    </div>
+    <div class="comp-pendente" id="compPendente"></div>
+    <input id="inpFormCam" type="file" accept="image/*" capture="environment" style="display:none">
+    <input id="inpFormArq" type="file" accept="image/*,application/pdf" multiple style="display:none">
     <button class="btn-principal" id="btnSalvar">Salvar despesa</button>
     <div class="conversao num" id="linhaConversao"></div>
   </div>
@@ -296,7 +315,7 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
-    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 33 · várias moedas, total em R$</div>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 34 · comprovantes por despesa</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
@@ -380,13 +399,22 @@
   <div class="visor-corpo" id="visorCorpo"></div>
 </div>
 
-<!-- Modal: vincular anexo a uma despesa -->
+<!-- Modal: comprovantes da despesa (separados dos documentos da viagem) -->
 <div class="veu" id="veuVinculo">
   <div class="modal">
-    <h3>📎 Vincular anexo</h3>
-    <div class="doc-aviso" id="vincDespesa" style="text-align:left;margin:0 0 10px"></div>
-    <div id="listaVinculo"></div>
-    <button class="fechar" id="vincFechar">Cancelar</button>
+    <h3>🧾 Comprovantes</h3>
+    <div class="doc-aviso" id="vincDespesa" style="text-align:left;margin:0 0 12px;font-size:13px"></div>
+    <div id="listaComprov"></div>
+    <div class="comp-botoes">
+      <label class="btn-anexar" for="inpCompCam">📷 Fotografar</label>
+      <label class="btn-anexar" for="inpCompArq">🖼️ Galeria ou PDF</label>
+    </div>
+    <input id="inpCompCam" type="file" accept="image/*" capture="environment" style="display:none">
+    <input id="inpCompArq" type="file" accept="image/*,application/pdf" multiple style="display:none">
+    <div class="doc-aviso">Ficam guardados junto desta despesa, separados dos documentos da viagem (📄).</div>
+    <button class="vinc-doc-link" id="vincDocLink">Usar um documento já salvo em 📄</button>
+    <div id="listaVinculo" style="display:none"></div>
+    <button class="fechar" id="vincFechar">Fechar</button>
   </div>
 </div>
 
@@ -639,10 +667,10 @@ function renderTudo(){
             <div class="ico" style="background:${tinte(c.cor,.16)}">${c.ico}</div>
             <div class="info">
               <div class="desc">${d.desc || c.nome}</div>
-              <div class="cat-nome">${c.nome}${pg ? ' · ' + pg.ico + ' ' + pg.nome : ''}</div>
+              <div class="cat-nome">${c.nome}${pg ? ' · ' + pg.ico + ' ' + pg.nome : ''}${(d.comprovantes||[]).length ? ' · 🧾 ' + d.comprovantes.length : ''}</div>
             </div>
             <div class="val-col"><div class="val num">${fmt(d.valor, simDe(v, d.moeda))}</div>${d.moeda !== 'BRL' ? `<div class="val-brl num">${fmtR(emBRL(d))}</div>` : ''}</div>
-            <button class="vincular ${d.anexoId?'tem':''}" data-vinc="${d.id}" title="Vincular anexo">📎</button>
+            <button class="vincular ${contaComprov(d)?'tem':''}" data-vinc="${d.id}" title="Comprovantes">📎</button>
             <button class="apagar" data-id="${d.id}" title="Apagar lançamento">✕</button>
           </div>`;
         }).join('')}
@@ -658,7 +686,9 @@ function renderTudo(){
       const backup = JSON.parse(JSON.stringify(alvo));
       vg.despesas = vg.despesas.filter(d => d.id != btn.dataset.id);
       await gravar(); renderTudo();
+      const purga = setTimeout(() => { (backup.comprovantes || []).forEach(c => apagarConteudoComprov(c)); }, 9000);
       avisarDesfazer('Lançamento apagado', async () => {
+        clearTimeout(purga);
         const v2 = viagem();
         v2.despesas.push(backup);
         await gravar(); renderTudo(); avisar('Lançamento restaurado ✓');
@@ -672,13 +702,7 @@ function renderTudo(){
       if(ev.target.closest('button')) return;
       const d = viagem().despesas.find(x => x.id == row.dataset.desp);
       if(!d) return;
-      if(d.anexoId){
-        const doc = lerDocs().find(x => x.id == d.anexoId);
-        if(!doc){ avisar('O anexo vinculado foi apagado'); delete d.anexoId; gravar(); renderTudo(); return; }
-        abrirDocumento(doc);
-      } else {
-        abrirVinculo(d.id);
-      }
+      abrirVinculo(d.id);
     });
   }
   atualizarConversao();
@@ -697,12 +721,21 @@ $('btnSalvar').onclick = async () => {
   const valor = parseFloat($('inpValor').value);
   if(!(valor > 0)){ avisar('Digite o valor da despesa'); $('inpValor').focus(); return; }
   const mi = infoMoeda(v, moedaAtiva(v));
-  v.despesas.push({ id: Date.now(), data: $('inpData').value || hoje(),
+  const nova = { id: Date.now(), data: $('inpData').value || hoje(),
     cat: catAtiva, pgto: pgtoAtivo, desc: $('inpDesc').value.trim(), valor: Math.round(valor*100)/100,
-    moeda: mi.cod, cambio: mi.cambio });
+    moeda: mi.cod, cambio: mi.cambio };
+  v.despesas.push(nova);
   await gravar();
   $('inpValor').value=''; $('inpDesc').value='';
-  renderTudo(); avisar('Despesa salva ✓');
+  if(compPendentes.length){
+    const arqs = compPendentes; compPendentes = []; renderCompPendentes();
+    const ok = await anexarComprovantes(arqs, nova, true);
+    renderTudo();
+    avisar(ok ? `Despesa salva com ${ok > 1 ? ok + ' comprovantes' : 'comprovante'} ✓` : 'Despesa salva — o comprovante não pôde ser guardado');
+  } else {
+    renderTudo();
+    avisarAcao('Despesa salva ✓', '📷 Comprovante', () => abrirVinculo(nova.id));
+  }
 };
 
 $('selViagem').onchange = async e => { dados.ativa = e.target.value; await gravar(); renderTudo(); try{ renderBadge(); }catch(err){} };
@@ -809,6 +842,8 @@ $('mExcluir').onclick = async () => {
     for(const d of docsV){ await docConteudoApagar(d.id); }
     const fotosV = JSON.parse(localStorage.getItem(CHAVE_FOTOS_DE(idRemovida)));
     if(fotosV && fotosV.itens){ for(const i of fotosV.itens){ await docConteudoApagar(i.id); await docConteudoApagar(i.id+1); } }
+    const vRem = dados.viagens.find(t => t.id === idRemovida);
+    for(const dp of ((vRem && vRem.despesas) || [])){ for(const c of (dp.comprovantes || [])) await apagarConteudoComprov(c); }
   }catch(e){}
   localStorage.removeItem(CHAVE_DOCS_DE(idRemovida));
   localStorage.removeItem(CHAVE_FOTOS_DE(idRemovida));
@@ -821,14 +856,14 @@ $('mExcluir').onclick = async () => {
 $('btnCSV').onclick = () => {
   const v = viagem();
   const n = x => String(x).replace('.', ',');
-  const linhas = [['Data','Categoria','Estabelecimento','Forma de pagamento','Moeda','Valor na moeda','Câmbio','Valor (R$)']];
+  const linhas = [['Data','Categoria','Estabelecimento','Forma de pagamento','Moeda','Valor na moeda','Câmbio','Valor (R$)','Comprovantes']];
   [...v.despesas].sort((a,b)=>a.data.localeCompare(b.data)).forEach(d => {
     const c = CATS.find(x=>x.id===d.cat)||CATS[6];
     const pg = PGTOS.find(x=>x.id===d.pgto);
     linhas.push([d.data, c.nome, (d.desc||'').replace(/;/g,','), pg?pg.nome:'', d.moeda,
-                 n(d.valor), n(d.moeda === 'BRL' ? 1 : d.cambio), n(cent(emBRL(d)))]);
+                 n(d.valor), n(d.moeda === 'BRL' ? 1 : d.cambio), n(cent(emBRL(d))), contaComprov(d) || '']);
   });
-  linhas.push(['','','','','','','TOTAL', n(cent(somaBRL(v.despesas)))]);
+  linhas.push(['','','','','','','TOTAL', n(cent(somaBRL(v.despesas))), '']);
   const csv = '\uFEFF' + linhas.map(l=>l.join(';')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -1036,11 +1071,17 @@ $('btnDestravar').onclick = async () => {
   }catch(e){ avisar('PIN incorreto'); }
 };
 
-$('btnEsqueciPin').onclick = () => {
-  if(!confirm('Sem o PIN não há como recuperar os anexos protegidos.\nApagar TODOS os anexos e remover o PIN?')) return;
-  localStorage.removeItem(CHAVE_DOCS_DE(idViagemAtual())); localStorage.removeItem(CHAVE_SALT); localStorage.removeItem(CHAVE_VERIF);
-  docConteudoLimpar();
-  chaveSessao = null; mostrarTrava(false); renderDocs(); avisar('Anexos e PIN removidos');
+$('btnEsqueciPin').onclick = async () => {
+  if(!confirm('Sem o PIN não há como recuperar os documentos protegidos (🔒).\nApagar os documentos protegidos e remover o PIN?\n\nFotos e comprovantes de despesas não são afetados.')) return;
+  for(const t of dados.viagens){
+    let docsT = [];
+    try{ docsT = JSON.parse(localStorage.getItem(CHAVE_DOCS_DE(t.id))) || []; }catch(e){}
+    const cifrados = docsT.filter(x => x.cif);
+    for(const x of cifrados){ try{ await docConteudoApagar(x.id); }catch(e){} }
+    if(cifrados.length) localStorage.setItem(CHAVE_DOCS_DE(t.id), JSON.stringify(docsT.filter(x => !x.cif)));
+  }
+  localStorage.removeItem(CHAVE_SALT); localStorage.removeItem(CHAVE_VERIF);
+  chaveSessao = null; mostrarTrava(false); renderDocs(); avisar('Documentos protegidos e PIN removidos');
 };
 
 $('btnPin').onclick = async () => {
@@ -1151,38 +1192,180 @@ async function abrirDocumento(doc){
   mostrarNoVisor(doc.nome, bytes, doc.tipo);
 }
 
+// ---------- Comprovantes da despesa (separados dos documentos da viagem) ----------
+let despComprov = null;   // id da despesa aberta no modal
+const contaComprov  = d => (d.comprovantes || []).length + (d.anexoId ? 1 : 0);
+const despesaAberta = () => despComprov ? viagem().despesas.find(x => x.id == despComprov) : null;
+async function apagarConteudoComprov(c){
+  try{ await docConteudoApagar(c.id); if(c.mini) await docConteudoApagar(c.id + 1); }catch(e){}
+}
+function nomeComprov(d, ext, n){
+  const base = (d.desc || (CATS.find(x => x.id === d.cat) || CATS[6]).nome)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'despesa';
+  const [a, m, dia] = d.data.split('-');
+  return `comprovante-${base}-${dia}-${m}${n > 1 ? '-' + n : ''}.${ext}`;
+}
+
 function abrirVinculo(idDespesa){
   const v = viagem();
   const d = v.despesas.find(x => x.id == idDespesa);
   if(!d) return;
+  despComprov = d.id;
   const c = CATS.find(x => x.id === d.cat) || CATS[6];
-  $('vincDespesa').innerHTML = `Despesa: <b>${d.desc || c.nome}</b> · ${fmt(d.valor, simDe(v, d.moeda))}`;
-  const docs = lerDocs();
-  if(!docs.length){
-    $('listaVinculo').innerHTML = '<div class="vazio">Nenhum anexo ainda.<br>Adicione vouchers em <b>📄 Documentos</b> primeiro.</div>';
-  } else {
-    $('listaVinculo').innerHTML = docs.map(doc => `
-      <div class="doc-linha" data-escolha="${doc.id}">
-        <div class="doc-ico">${doc.tipo.includes('pdf') ? '📕' : '🖼️'}</div>
-        <div class="doc-info"><div class="doc-nome">${doc.cif ? '🔒 ' : ''}${doc.nome}</div>
-        <div class="doc-sub">${doc.tam}</div></div>
-        <div class="doc-abrir">${d.anexoId == doc.id ? '✓ vinculado' : 'Escolher'}</div>
-      </div>`).join('') +
-      (d.anexoId ? `<div class="doc-linha" data-escolha="remover">
-        <div class="doc-ico">✕</div>
-        <div class="doc-info"><div class="doc-nome">Remover vínculo</div></div></div>` : '');
-    document.querySelectorAll('#listaVinculo [data-escolha]').forEach(el => el.onclick = async () => {
-      if(el.dataset.escolha === 'remover'){ delete d.anexoId; }
-      else { d.anexoId = Number(el.dataset.escolha); }
-      await gravar();
-      fecharTopo();
-      renderTudo();
-      avisar(el.dataset.escolha === 'remover' ? 'Vínculo removido' : 'Anexo vinculado ✓ — toque na despesa para abrir');
-    });
+  $('vincDespesa').innerHTML = `${c.ico} <b>${d.desc || c.nome}</b> · ${fmt(d.valor, simDe(v, d.moeda))}`
+    + (d.moeda !== 'BRL' ? ` · ${fmtR(emBRL(d))}` : '') + ` · ${d.data.split('-').reverse().join('/')}`;
+  $('listaVinculo').style.display = 'none';
+  renderComprov();
+  if(!$('veuVinculo').classList.contains('aberto')){
+    $('veuVinculo').classList.add('aberto');
+    empilharVoltar(() => { $('veuVinculo').classList.remove('aberto'); despComprov = null; });
   }
-  $('veuVinculo').classList.add('aberto');
-  empilharVoltar(() => $('veuVinculo').classList.remove('aberto'));
 }
+
+async function renderComprov(){
+  const d = despesaAberta(); if(!d) return;
+  let docVinc = null;
+  if(d.anexoId){
+    docVinc = lerDocs().find(x => x.id == d.anexoId) || null;
+    if(!docVinc){ delete d.anexoId; await gravar(); }        // documento foi apagado em 📄
+  }
+  const lista = d.comprovantes || [];
+  const caixa = $('listaComprov');
+  if(!lista.length && !docVinc){
+    caixa.innerHTML = '<div class="comp-vazio">Nenhum comprovante ainda.<br>Fotografe o cupom ou escolha uma foto ou PDF.</div>';
+    return;
+  }
+  caixa.innerHTML = '<div class="grade-fotos" id="gradeComprov"></div>';
+  const g = $('gradeComprov');
+  const botaoX = (titulo, acao) => {
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = titulo;
+    x.onclick = async ev => { ev.stopPropagation(); await acao(); };
+    return x;
+  };
+  for(const cp of lista){
+    const div = document.createElement('div'); div.className = 'mini';
+    if(cp.tipo.includes('pdf')){
+      div.innerHTML = '<div class="pdf">📕<small></small></div>';
+      div.querySelector('small').textContent = cp.nome;
+    } else {
+      const img = document.createElement('img'); img.alt = cp.nome;
+      try{
+        const rec = await docConteudoPegar(cp.mini ? cp.id + 1 : cp.id);
+        if(rec && rec.plano) img.src = URL.createObjectURL(rec.plano);
+      }catch(e){}
+      div.appendChild(img);
+    }
+    div.appendChild(botaoX('Apagar comprovante', async () => {
+      if(!confirm('Apagar este comprovante?')) return;
+      await apagarConteudoComprov(cp);
+      const dd = despesaAberta(); if(!dd) return;
+      dd.comprovantes = (dd.comprovantes || []).filter(z => z.id !== cp.id);
+      await gravar(); renderComprov(); renderTudo(); avisar('Comprovante apagado');
+    }));
+    div.onclick = async () => {
+      const rec = await docConteudoPegar(cp.id);
+      if(!rec || !rec.plano){ avisar('Arquivo do comprovante não encontrado'); return; }
+      mostrarNoVisor(cp.nome, new Uint8Array(await rec.plano.arrayBuffer()), cp.tipo);
+    };
+    g.appendChild(div);
+  }
+  if(docVinc){
+    const div = document.createElement('div'); div.className = 'mini';
+    div.innerHTML = '<div class="pdf">📄<small></small></div>';
+    div.querySelector('small').textContent = docVinc.nome;
+    div.appendChild(botaoX('Desvincular documento', async () => {
+      const dd = despesaAberta(); if(!dd) return;
+      delete dd.anexoId; await gravar(); renderComprov(); renderTudo();
+      avisar('Desvinculado — o documento continua em 📄');
+    }));
+    div.onclick = () => abrirDocumento(docVinc);
+    g.appendChild(div);
+  }
+}
+
+async function anexarComprovantes(arquivos, alvo, silencioso){
+  const d = alvo || despesaAberta();
+  if(!d || !arquivos.length) return 0;
+  if(!silencioso) avisar(arquivos.length > 1 ? `Salvando ${arquivos.length} comprovantes…` : 'Salvando comprovante…');
+  d.comprovantes = d.comprovantes || [];
+  let ok = 0;
+  for(const f of arquivos){
+    try{
+      const id = Date.now() + Math.floor(Math.random() * 1000) * 2;
+      const n = d.comprovantes.length + 1;
+      const ehPdf = (f.type || '').includes('pdf') || /\.pdf$/i.test(f.name || '');
+      if(ehPdf){
+        if(f.size > 10 * 1024 * 1024){ avisar('PDF grande demais (máx. 10 MB)'); continue; }
+        await docConteudoSalvar({id, plano: new Blob([await f.arrayBuffer()], {type: 'application/pdf'})});
+        d.comprovantes.push({id, nome: nomeComprov(d, 'pdf', n), tipo: 'application/pdf', mini: false});
+      } else {
+        let grande = null, mini = null;
+        try{ grande = await comprimir(f, 2000, 0.85); mini = await comprimir(f, 320, 0.7); }catch(e){}
+        if(!grande){ grande = f; mini = null; }   // formato que o navegador não reduz: guarda o original
+        await docConteudoSalvar({id, plano: grande});
+        if(mini) await docConteudoSalvar({id: id + 1, plano: mini});
+        d.comprovantes.push({id, nome: nomeComprov(d, 'jpg', n), tipo: grande === f ? (f.type || 'image/jpeg') : 'image/jpeg', mini: !!mini});
+      }
+      ok++;
+    }catch(err){}
+  }
+  await gravar();
+  if(!alvo){
+    renderComprov(); renderTudo();
+    avisar(ok ? (ok > 1 ? `${ok} comprovantes salvos ✓` : 'Comprovante salvo ✓') : 'Não consegui salvar — tente de novo');
+  }
+  return ok;
+}
+
+// comprovante escolhido ANTES de salvar a despesa: fica pendente e vai junto no Salvar
+let compPendentes = [];
+function renderCompPendentes(){
+  const n = compPendentes.length;
+  $('compPendente').innerHTML = n
+    ? `🧾 ${n} comprovante${n>1?'s':''} pronto${n>1?'s':''} para anexar <button type="button" id="compLimpar">remover</button>` : '';
+  if(n) $('compLimpar').onclick = () => { compPendentes = []; renderCompPendentes(); };
+}
+['inpFormCam', 'inpFormArq'].forEach(idInp => $(idInp).addEventListener('change', e => {
+  const arqs = [...e.target.files];
+  e.target.value = '';
+  if(!arqs.length) return;
+  compPendentes.push(...arqs); renderCompPendentes();
+  avisar('Comprovante pronto — agora é só salvar a despesa');
+}));
+['inpCompCam', 'inpCompArq'].forEach(idInp => $(idInp).addEventListener('change', async e => {
+  const arqs = [...e.target.files];
+  e.target.value = '';
+  await anexarComprovantes(arqs);
+}));
+
+// opção secundária: apontar para um documento já salvo em 📄 (ex.: voucher do hotel)
+$('vincDocLink').onclick = () => {
+  const box = $('listaVinculo');
+  if(box.style.display !== 'none'){ box.style.display = 'none'; return; }
+  const d = despesaAberta(); if(!d) return;
+  const docs = lerDocs();
+  box.style.display = 'block';
+  if(!docs.length){
+    box.innerHTML = '<div class="vazio">Nenhum documento salvo em 📄 nesta viagem.</div>';
+    return;
+  }
+  box.innerHTML = docs.map(doc => `
+    <div class="doc-linha" data-escolha="${doc.id}">
+      <div class="doc-ico">${doc.tipo.includes('pdf') ? '📕' : '🖼️'}</div>
+      <div class="doc-info"><div class="doc-nome">${doc.cif ? '🔒 ' : ''}${doc.nome}</div>
+      <div class="doc-sub">${doc.tam}</div></div>
+      <div class="doc-abrir">${d.anexoId == doc.id ? '✓ vinculado' : 'Escolher'}</div>
+    </div>`).join('');
+  document.querySelectorAll('#listaVinculo [data-escolha]').forEach(el => el.onclick = async () => {
+    const dd = despesaAberta(); if(!dd) return;
+    const id = Number(el.dataset.escolha);
+    if(dd.anexoId == id){ delete dd.anexoId; } else { dd.anexoId = id; }
+    await gravar();
+    box.style.display = 'none';
+    renderComprov(); renderTudo();
+    avisar(dd.anexoId ? 'Documento vinculado ✓' : 'Vínculo removido');
+  });
+};
 $('vincFechar').onclick = fecharTopo;
 
 function renderDocs(){
@@ -1617,16 +1800,27 @@ $('inpFoto').addEventListener('change', async e => {
 });
 
 let avisoTimer;
+function avisarAcao(msg, rotulo, aoTocar){
+  const el = $('aviso');
+  clearTimeout(avisoTimer);
+  el.classList.remove('mostra');
+  el.innerHTML = msg + ' <button id="btnAcaoAviso" style="margin-left:10px;background:#fff;color:var(--tinta);border:none;border-radius:8px;padding:5px 11px;font-size:13px;font-weight:700;cursor:pointer"></button>';
+  $('btnAcaoAviso').textContent = rotulo;
+  el.classList.add('visivel');
+  $('btnAcaoAviso').onclick = () => { clearTimeout(avisoTimer); el.classList.remove('visivel'); aoTocar(); };
+  avisoTimer = setTimeout(() => el.classList.remove('visivel'), 6000);
+}
 function avisarDesfazer(msg, aoDesfazer){
   const el = $('aviso');
   clearTimeout(avisoTimer);
+  el.classList.remove('mostra');
   el.innerHTML = msg + ' <button id="btnDesfazer" style="margin-left:10px;background:#fff;color:var(--tinta);border:none;border-radius:8px;padding:5px 11px;font-size:13px;font-weight:700;cursor:pointer">DESFAZER</button>';
   el.classList.add('visivel');
   $('btnDesfazer').onclick = () => { clearTimeout(avisoTimer); el.classList.remove('visivel'); aoDesfazer(); };
   avisoTimer = setTimeout(() => el.classList.remove('visivel'), 7000);
 }
 function avisar(msg){
-  const el = $('aviso'); el.textContent = msg; el.classList.add('mostra');
+  const el = $('aviso'); el.classList.remove('visivel'); el.textContent = msg; el.classList.add('mostra');
   clearTimeout(avisoTimer); avisoTimer = setTimeout(()=>el.classList.remove('mostra'), 2200);
 }
 
