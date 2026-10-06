@@ -1,7 +1,7 @@
 // Service worker v3 — corrige atualização travada:
 // HTML: rede primeiro (atualiza na hora; cache só como reserva offline)
 // Demais arquivos: cache imediato + revalidação em segundo plano
-const CACHE = 'despesas-viagem-v5';
+const CACHE = 'despesas-viagem-v6';
 const NUCLEO = ['.', 'index.html', 'manifest.webmanifest', 'icone-192.png', 'icone-512.png'];
 
 self.addEventListener('install', e => {
