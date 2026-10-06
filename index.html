@@ -282,7 +282,7 @@
     <label>Tema do aplicativo</label>
     <div class="chips chips-pgto" id="temaChips"></div>
     <button class="btn-principal" id="mSalvar">Salvar</button>
-    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 30 · checklist revisado da missão</div>
+    <div class="doc-aviso" style="margin-top:10px">Despesas de Viagem · versão 31 · checklist com o guia final</div>
     <button class="fechar" id="mFechar">Cancelar</button>
     <div class="zona-perigo" id="zonaPerigo" style="display:none">
       <button id="mExcluir">Excluir esta viagem e todos os lançamentos</button>
@@ -1131,14 +1131,19 @@ function checklistChina(){
     {id:901, txt:'Rijksmuseum dom 11/10 09:00 — ingressos comprados', data:null, feito:true},
     {id:902, txt:'CIVP de febre amarela — certificado em mãos', data:null, feito:true},
     {id:903, txt:'Seguro-viagem Assist Card 250 Flat (US$ 250 mil) — incluído pela organização', data:null, feito:true},
+    {id:941, txt:'Canton Fair — inscrição já feita pela China Trade com o time da FIEPE', data:null, feito:true},
+    {id:942, txt:'Guia da Viagem recebido — hotéis e endereços dos 4 hotéis', data:null, feito:true},
     {id:904, txt:'Van Gogh Museum dom 11/10 ~14:00 — só online, esgota', data:'2026-10-06', feito:false},
     {id:905, txt:'Anne Frank Huis seg 12/10 — checar devoluções em annefrank.org', data:'2026-10-06', feito:false},
     {id:906, txt:'Queutur: confirmar hotel Amsterdã 10, 11 e 12/10 + late check-out dia 13', data:'2026-10-06', feito:false},
     {id:907, txt:'Conferir passaporte e documentos de entrada (China e Hong Kong)', data:'2026-10-06', feito:false},
     {id:908, txt:'Queutur: traslado Schiphol › hotel na chegada de 10/10 às 18:40', data:'2026-10-07', feito:false},
     {id:909, txt:'Queutur: traslado hotel › Schiphol em 13/10 — estar lá às 18:25 (KL 887 sai 21:25)', data:'2026-10-07', feito:false},
-    {id:910, txt:'Canton Fair: confirmar se o credenciamento/badge é feito pela China Trade', data:'2026-10-07', feito:false},
-    {id:911, txt:'Pedir o Guia da Viagem e o Guia de Aplicativos (PDF) e anexar no app', data:'2026-10-07', feito:false},
+    {id:943, txt:'Queutur: confirmar se o hotel de 10, 11 e 12/10 é o Ibis Centre Stopera (bloco da missão é só 12–13/10)', data:'2026-10-07', feito:false},
+    {id:944, txt:'Ana Quésia: franquia de bagagem da Executiva/Business — as regras do guia são de econômica', data:'2026-10-07', feito:false},
+    {id:945, txt:'Escolher os setores de interesse na Canton Fair para receber o mini guia personalizado', data:'2026-10-07', feito:false},
+    {id:946, txt:'13/10: late check-out do hotel da missão é 16h, mas o traslado ao aeroporto é 15:30 — alinhar', data:'2026-10-07', feito:false},
+    {id:911, txt:'Pedir o Guia de Aplicativos (PDF) e anexar no app', data:'2026-10-07', feito:false},
     {id:912, txt:'Receber e anexar os vouchers dos hotéis no app', data:'2026-10-07', feito:false},
     {id:913, txt:'Reservar rijsttafel dom 11/10 19:30 (Blauw ou Tempo Doeloe)', data:'2026-10-07', feito:false},
     {id:914, txt:'Reservar jantar seg 12/10 20:00 (Greetje)', data:'2026-10-07', feito:false},
@@ -1150,13 +1155,14 @@ function checklistChina(){
     {id:920, txt:'Avisar banco e cartões sobre uso internacional', data:'2026-10-08', feito:false},
     {id:921, txt:'Euros e yuan em espécie (China até US$ 5.000; Europa menos de € 10.000)', data:'2026-10-08', feito:false},
     {id:922, txt:'Baixar mapas offline (Amsterdã, Guangzhou, Shenzhen) — Google é bloqueado na China', data:'2026-10-08', feito:false},
-    {id:923, txt:'Adaptador universal — China é 220 V, tomada tipo A/I; Europa tipo C', data:'2026-10-08', feito:false},
+    {id:923, txt:'Adaptador universal vem no kit de viagem — levar o seu como reserva', data:'2026-10-08', feito:false},
+    {id:947, txt:'Guarda-chuva compacto — Guangzhou é quente e úmido em outubro', data:'2026-10-08', feito:false},
     {id:924, txt:'Remédios de uso habitual na embalagem original e na bagagem de mão', data:'2026-10-08', feito:false},
     {id:925, txt:'Meias de compressão para os voos longos', data:'2026-10-08', feito:false},
     {id:926, txt:'Lembranças simples do Brasil ou da empresa para os anfitriões', data:'2026-10-08', feito:false},
     {id:927, txt:'Cartões de visita — entregar e receber com as duas mãos', data:'2026-10-08', feito:false},
     {id:928, txt:'Malas: traje social para as reuniões + calçado confortável para a Canton Fair', data:'2026-10-08', feito:false},
-    {id:929, txt:'Casaco: Amsterdã 8–15 °C; Guangzhou 21–30 °C; Shenzhen 22–29 °C', data:'2026-10-08', feito:false},
+    {id:929, txt:'Casaco: Amsterdã 9–16 °C; Guangzhou 22–30 °C; Shenzhen 23–30 °C', data:'2026-10-08', feito:false},
     {id:930, txt:'Power bank: só na bagagem de mão, máx. 100 Wh, nunca despachado', data:'2026-10-08', feito:false},
     {id:931, txt:'Check-in online TAP (24 h antes) — voo sex 09/10 22:25', data:'2026-10-08', feito:false},
     {id:932, txt:'Chegar ao aeroporto do Recife às 19:25 (3 h antes)', data:'2026-10-09', feito:false},
@@ -1164,8 +1170,7 @@ function checklistChina(){
     {id:934, txt:'Cartão de chegada no app 12367: Foreigner Service › Arrival Card › Entry Declaration', data:'2026-10-11', feito:false},
     {id:935, txt:'Pacote Vodafone CHINA 15 GB: SMS para 16910 (antes de 14/10)', data:'2026-10-13', feito:false},
     {id:936, txt:'Schiphol 13/10: confirmar o ponto de encontro do grupo antes do KL 887', data:'2026-10-13', feito:false},
-    {id:937, txt:'Acertar o relógio: China é +11 h em relação a Brasília', data:'2026-10-14', feito:false},
-    {id:938, txt:'Em cada hotel, pegar o cartão com o endereço em mandarim', data:'2026-10-14', feito:false},
+    {id:937, txt:'Acertar o relógio: Amsterdã +5 h e China +11 h em relação a Recife', data:'2026-10-10', feito:false},
     {id:939, txt:'No check-in em Hong Kong (21/10), perguntar à KLM se despacha as malas até Recife', data:'2026-10-21', feito:false},
     {id:940, txt:'Em Amsterdã (22/10): bilhetes separados — retirar as malas, alfândega e despachar de novo na TAP', data:'2026-10-22', feito:false},
   ];
